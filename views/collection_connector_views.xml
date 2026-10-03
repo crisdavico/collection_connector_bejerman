@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_collection_connector_form_bejerman" model="ir.ui.view">
+        <field name="name">collection.connector.form.bejerman</field>
+        <field name="model">collection.connector</field>
+        <field name="inherit_id" ref="collection.view_collection_connector_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button
+            name="test_connection"
+            type="object"
+            string="Test Connection"
+            class="btn-primary"
+            invisible="type != 'bejerman'"
+            groups="base.group_system"
+          />
+                    <button
+            name="action_bejerman_refresh_snapshot"
+            type="object"
+            string="Refresh Debt"
+            invisible="type != 'bejerman'"
+            groups="base.group_system"
+          />
+                </header>
+            </xpath>
+            <xpath expr="//field[@name='type']" position="after">
+                <field
+          name="bejerman_ws_url"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_usuario"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_clave"
+          password="True"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_empresa"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_puesto"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_sucursal"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_timeout"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_allow_insecure"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_ca_bundle"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_seller_scenario"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_seller_view"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_debt_scenario"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_debt_view"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_debt_filter_field"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_quotation_kinds"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_snapshot_refreshed_at"
+          readonly="1"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_snapshot_debt_count"
+          readonly="1"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+                <field
+          name="bejerman_snapshot_customer_count"
+          readonly="1"
+          invisible="type != 'bejerman'"
+          groups="base.group_system"
+        />
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_collection_connector_bejerman_debt_user,collection.connector.bejerman.debt.user,model_collection_connector_bejerman_debt,base.group_user,1,0,0,0
+access_collection_connector_bejerman_debt_system,collection.connector.bejerman.debt.system,model_collection_connector_bejerman_debt,base.group_system,1,1,1,1
+access_collection_connector_bejerman_customer_user,collection.connector.bejerman.customer.user,model_collection_connector_bejerman_customer,base.group_user,1,0,0,0
+access_collection_connector_bejerman_customer_system,collection.connector.bejerman.customer.system,model_collection_connector_bejerman_customer,base.group_system,1,1,1,1

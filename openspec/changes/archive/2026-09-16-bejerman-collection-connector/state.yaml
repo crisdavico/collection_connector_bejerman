@@ -1,0 +1,30 @@
+# SDD change state — orchestrator-managed
+change: bejerman-collection-connector
+artifact_store: openspec
+delivery_strategy: ask-on-risk
+chain_strategy: stacked-to-main
+execution_mode: automatic
+planning_depth: standard
+subagent_model: grok-4.6
+phase: apply
+updated: 2026-09-16
+delivery_strategy: auto-chain
+artifacts:
+  explore: true
+  proposal: true
+  specs: true
+  design: true
+  tasks: true
+notes: |
+  Planning home is this addon git. Parent Seedian acquire is blocked by nested
+  collection git dirs. pip.txt httpx landed in parent. Apply Phase 1 next.
+updated: 2026-09-16
+research: unselected
+product_decisions: confirmed
+proposal_ready: true
+artifacts:
+  explore: true
+notes: |
+  Explore done ([Explore](17e7b9ea-ddf1-4483-99ac-a09b803b77d1)). Research unselected.
+  Pre-proposal handoff confirmed. Launching sdd-propose. Skip interviews.
+  Apply/smoke still gated on ObtenerClientes + two Query views.

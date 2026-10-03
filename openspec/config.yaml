@@ -1,0 +1,70 @@
+schema: spec-driven
+project: collection_connector_bejerman
+persistence: openspec
+strict_tdd: true
+
+defaults:
+  execution_mode: automatic
+  artifact_store: openspec
+  delivery_strategy: auto-chain
+  planning_depth: standard
+  subagent_model: cursor-grok-4.6-xhigh
+  chain_strategy: stacked-to-main
+
+context: |
+  Stack: Odoo 19 on Python, PostgreSQL 17, Docker Compose, and Doodba.
+  Scope: sibling addon odoo/custom/src/private/collection_connector_bejerman/.
+  Product: Read-only Bejerman adapter for collection.connector.
+  Testing: invoke test -m collection_connector_bejerman --mode=update
+    from the Seedian repo root.
+  Quality: scoped pre-commit (Ruff, pylint-odoo, Prettier, OCA checks).
+  Conventions: parent seedian/AGENTS.md plus collection/AGENTS.md.
+
+testing:
+  strict_tdd: true
+  runner:
+    framework: Odoo native test runner
+    command: invoke test -m collection_connector_bejerman --mode=update
+  quality:
+    linter:
+      available: true
+      command: >-
+        pre-commit run --files odoo/custom/src/private/collection_connector_bejerman/**
+
+rules:
+  proposal:
+    - State user impact, connector contract, risks, and rollback strategy.
+    - Keep collection MCP/allocation/sheet behavior in collection; adapters only.
+    - Do not include nebula-agent or Bejerman receipt write-back.
+  specs:
+    - Use RFC 2119 keywords for requirements.
+    - Express acceptance scenarios with Given, When, and Then.
+    - Cover fail-closed errors, admin-only credentials, and no SOAP leakage.
+  design:
+    - Follow Odoo 19 patterns and repository AGENTS.md files.
+    - Document SOAP session lifecycle, mapping, and TLS policy.
+    - Include sequence diagrams only for the Registro → Ejecutar → Cierre flow.
+  tasks:
+    - Group tasks into reviewable work units with tests beside implementation.
+    - Flag plans that may exceed the 400 changed-line review budget.
+    - Mark collection/, collection_connector_sqlite/, Bejerman SDK, and Doodba pip.txt
+      as (read-only) unless this repo must edit them.
+  apply:
+    guidelines:
+      - Edit only this addon repository.
+      - Do not edit Copier-managed, git-aggregate, collection, or sqlite files.
+      - Load odoo-19 skills before implementation.
+      - Doodba httpx is applied in the parent Seedian repo; do not edit pip.txt here.
+    roots:
+      - /home/crisd/projects/seedian/seedian/odoo/custom/src/private/collection_connector_bejerman
+    tdd: true
+    test_command: invoke test -m collection_connector_bejerman --mode=update
+  verify:
+    test_command: invoke test -m collection_connector_bejerman --mode=update
+    build_command: invoke img-build
+    lint_command: >-
+      pre-commit run --files odoo/custom/src/private/collection_connector_bejerman/**
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive or backward-incompatible deltas.
+    - Preserve archived change artifacts as an immutable audit trail.
