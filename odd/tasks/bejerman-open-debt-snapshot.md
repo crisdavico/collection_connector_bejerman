@@ -91,8 +91,18 @@ Route per task: delegated direct (writer trigger: 2+ non-trivial files).
 
 - Forecast: ~800 authored changed lines (above the ~400 budget). Strategy from
   `openspec/config.yaml`: `auto-chain`, `stacked-to-main`.
-- Commits: **pending user decision**. The addon repo has no commits and every file is
-  untracked, so a work-unit commit would also capture pre-existing work.
+- Commits (user decision 2026-10-03): one initial commit on `main` with the whole addon.
+  The pre-existing connector was never committed and its original bytes were not
+  recoverable, so a separate baseline commit was impossible.
+  - `8a179c6` feat(collection_connector_bejerman): add Bejerman connector with open debt
+    snapshot (T1-T7).
+- Before committing, the real customer code copied from the example row into
+  `tests/test_bejerman_debt_mapping.py` was replaced with the synthetic `ZZ0001`.
+- Lint at commit: repo-pinned `ruff@0.13.0 check` and `format --check` clean. The
+  parent pre-commit no longer sees the addon's files once the nested repo has a HEAD.
+- Native review: not run. `review assess` reports `unassessable` (a root commit has no
+  base ref) and `review status --committed-only` requires `--base-ref`. Pending user
+  decision.
 
 ## Progress
 
@@ -263,9 +273,10 @@ Route per task: delegated direct (writer trigger: 2+ non-trivial files).
   `DHS`/`FMK`/`FEM`/`FEH`/`FIH`); say so if `PRS`/`PRM` should be quotations (set
   Bejerman Quotation Kinds `PRE,PRS`).
 - 8 open rows are in currency `2`; amounts used are the local-currency columns.
-- Commits and delivery strategy remain pending (see Delivery).
+- Native review of the root commit remains pending (see Delivery).
 
 ## Next step
 
-User decision on the commit/delivery strategy; then, when the filtered child view
-exists, set Bejerman Debt Filter Field (for example `CVE_CODCLI`) on the connector.
+Configure the connector (debt scenario `TEST`, view `Saldos al día/*`) and run Refresh
+Debt once. When the filtered child view exists, set Bejerman Debt Filter Field (for
+example `CVE_CODCLI`) on the connector.
