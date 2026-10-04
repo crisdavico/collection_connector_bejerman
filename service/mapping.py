@@ -227,10 +227,16 @@ _DEBT_ALIASES = {
 _AMBIGUOUS = object()
 
 
-def _resolve_debt_keys(keys: Iterable[Any]) -> dict[str, Any]:
+# The voucher seller carried by every `Saldos al dia` row, open or not.
+_SELLER_ALIASES = {"codigo": "CVEVEN_COD", "nombre": "VEN_DESC"}
+
+
+def _resolve_debt_keys(
+    keys: Iterable[Any], aliases: Mapping[str, str] = _DEBT_ALIASES
+) -> dict[str, Any]:
     """Map each alias to the one key ending with it; ambiguous stays unusable."""
     resolved: dict[str, Any] = {}
-    for name, alias in _DEBT_ALIASES.items():
+    for name, alias in aliases.items():
         matches = [key for key in keys if str(key).endswith(alias)]
         if len(matches) == 1:
             resolved[name] = matches[0]
@@ -324,6 +330,30 @@ def map_open_debt(
         seen.add(entry["external_invoice_id"])
         entries.append(entry)
     return entries
+
+
+def map_debt_sellers(payload: Any) -> list[dict[str, str]]:
+    """Unique voucher sellers over every debt row, closed rows included.
+
+    Codes are trimmed; the first non-blank name seen for a code wins. A row whose
+    code or name alias is ambiguous, or whose code is missing or blank, is skipped.
+    """
+    cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+    sellers: dict[str, str] = {}
+    for row in as_rows(payload):
+        shape = tuple(row)
+        keys = cache.get(shape)
+        if keys is None:
+            keys = cache[shape] = _resolve_debt_keys(shape, _SELLER_ALIASES)
+        if _AMBIGUOUS in keys.values() or keys["codigo"] is None:
+            continue
+        code = trim_code(row.get(keys["codigo"]))
+        if not code:
+            continue
+        name = "" if keys["nombre"] is None else _text(row.get(keys["nombre"]))
+        if not sellers.get(code):
+            sellers[code] = name
+    return [{"seller_code": code, "name": name} for code, name in sellers.items()]
 
 
 def debt_state(due_date: Any, today: date | str | None) -> str:

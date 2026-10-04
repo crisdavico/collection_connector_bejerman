@@ -242,6 +242,7 @@ def _debt_row(
     femision="2026-01-01T00:00:00.000Z",
     vendedor="DN",
     prefix=_DEBT_PREFIX,
+    vendedor_nombre="SYNTHETIC SELLER",
 ):
     """Return a row shaped like the real `Saldos al dia` view."""
     imp = saldo if imp is None else imp
@@ -256,7 +257,7 @@ def _debt_row(
         f"{prefix}CVE_CODCLI": codcli,
         f"{prefix}CVECLI_RAZSOC": "SYNTHETIC CUSTOMER",
         f"{prefix}CVEVEN_COD": vendedor,
-        f"{prefix}VEN_DESC": "SYNTHETIC SELLER",
+        f"{prefix}VEN_DESC": vendedor_nombre,
         f"{prefix}CVECVT_COD": None,
         f"{prefix}CVT_DESC": None,
         f"{prefix}CVEMON_CODIGO": "1",

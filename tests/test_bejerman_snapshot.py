@@ -60,6 +60,11 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
             [("connector_id", "=", connector.id)], order="customer_code"
         )
 
+    def _sellers(self, connector):
+        return self.env["collection.connector.bejerman.seller"].search(
+            [("connector_id", "=", connector.id)], order="seller_code"
+        )
+
     def test_refresh_replaces_snapshot_in_one_session(self):
         """One Registro, both reads, one Cierre; rows and counters are stored."""
         connector = self._make_connector()
@@ -105,6 +110,56 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
         self.assertTrue(connector.bejerman_snapshot_refreshed_at)
         self.assertEqual(connector.bejerman_snapshot_debt_count, 4)
         self.assertEqual(connector.bejerman_snapshot_customer_count, 2)
+
+        sellers = self._sellers(connector)
+        self.assertEqual(sellers.mapped("seller_code"), ["DN"])
+        self.assertEqual(sellers.name, "SYNTHETIC SELLER")
+        self.assertEqual(sellers.company_id, connector.company_id)
+
+    def test_refresh_stores_sellers_of_every_debt_row_in_the_same_download(self):
+        """Closed rows count too, and the seller list costs no extra request."""
+        connector = self._make_connector()
+        closed = _debt_row(
+            "FHK",
+            "00004",
+            "A",
+            "00005555",
+            "000123",
+            "2026-03-01",
+            0,
+            vendedor="00SA1",
+            vendedor_nombre="SANCHEZ ANA",
+        )
+        pack = {"clientes": _CLIENTES, "debts": [*_DEBT_ROWS, closed]}
+        mock_post = self._refresh(connector, payloads_by_url={"*": pack})
+        actions = [_call_soap_action(call) for call in mock_post.call_args_list]
+        self.assertEqual(len(actions), 4)
+        sellers = self._sellers(connector)
+        self.assertEqual(sellers.mapped("seller_code"), ["DN", "SA1"])
+        self.assertEqual(
+            sellers.filtered(lambda r: r.seller_code == "SA1").name, "SANCHEZ ANA"
+        )
+        self.assertEqual(connector.bejerman_snapshot_debt_count, 4)
+
+    def test_second_refresh_replaces_previous_sellers(self):
+        """A seller that left the view disappears from the snapshot."""
+        connector = self._make_connector()
+        other = _debt_row(
+            "FHK",
+            "00004",
+            "A",
+            "00006666",
+            "000123",
+            "2026-03-01",
+            5,
+            vendedor="QQ",
+            vendedor_nombre="QUIROGA Q",
+        )
+        pack = {"clientes": _CLIENTES, "debts": [*_DEBT_ROWS, other]}
+        self._refresh(connector, payloads_by_url={"*": pack})
+        self.assertEqual(self._sellers(connector).mapped("seller_code"), ["DN", "QQ"])
+        self._refresh(connector)
+        self.assertEqual(self._sellers(connector).mapped("seller_code"), ["DN"])
 
     def test_second_refresh_replaces_previous_rows(self):
         """A refresh drops reconciled rows and keeps only the new snapshot."""
@@ -176,6 +231,8 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
         connector = self._make_connector()
         self._refresh(connector)
         before_ids = self._debts(connector).ids
+        before_sellers = self._sellers(connector).ids
+        self.assertTrue(before_sellers)
         before_stamp = connector.bejerman_snapshot_refreshed_at
         for fail in (("debt_view",), ("ObtenerClientes",), ("Registro",)):
             with self.subTest(fail=fail):
@@ -192,6 +249,7 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
                 for secret in _SECRETS:
                     self.assertNotIn(secret, blob)
                 self.assertEqual(self._debts(connector).ids, before_ids)
+                self.assertEqual(self._sellers(connector).ids, before_sellers)
                 self.assertEqual(
                     self._customers(connector).mapped("customer_code"), ["123", "124"]
                 )
@@ -222,6 +280,47 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
             self._customers(connector).mapped("customer_code"), ["123", "124"]
         )
 
+    def test_seller_write_failure_rolls_back_the_whole_replacement(self):
+        """If storing sellers fails, debts, customers and sellers all stay."""
+        connector = self._make_connector()
+        self._refresh(connector)
+        before = (
+            self._debts(connector).ids,
+            self._customers(connector).ids,
+            self._sellers(connector).ids,
+        )
+        seller_model = type(self.env["collection.connector.bejerman.seller"])
+
+        def _boom(_self, _vals_list):
+            raise RuntimeError("boom secret-detail " + _WS_URL)
+
+        with patch.object(seller_model, "create", new=_boom):
+            with self.assertLogs(_CONNECTOR_LOGGER, level="WARNING") as logs:
+                with self.assertRaises(UserError) as ctx:
+                    self._refresh(connector, payloads_by_url={"*": _ONE_ROW_PACK})
+        self.assertEqual(str(ctx.exception), _REFRESH_FAILED)
+        self.assertNotIn("secret-detail", "\n".join(logs.output))
+        self.assertEqual(
+            (
+                self._debts(connector).ids,
+                self._customers(connector).ids,
+                self._sellers(connector).ids,
+            ),
+            before,
+        )
+
+    def test_unique_seller_code_per_connector(self):
+        """The same seller code twice on one connector is refused by the database."""
+        connector = self._make_connector()
+        other = self._make_connector(name="Second connector")
+        Seller = self.env["collection.connector.bejerman.seller"]
+        vals = {"connector_id": connector.id, "seller_code": "DO", "name": "D O"}
+        Seller.create(vals)
+        Seller.create(dict(vals, connector_id=other.id))
+        with mute_logger("odoo.sql_db"), self.assertRaises(IntegrityError):
+            with self.env.cr.savepoint():
+                Seller.create(vals)
+
     def test_unique_external_invoice_id_per_connector(self):
         """The same id twice on one connector is refused by the database."""
         connector = self._make_connector()
@@ -245,10 +344,12 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
         connector = self._make_connector()
         self._refresh(connector)
         debts, customers = self._debts(connector), self._customers(connector)
-        self.assertTrue(debts and customers)
+        sellers = self._sellers(connector)
+        self.assertTrue(debts and customers and sellers)
         connector.unlink()
         self.assertFalse(debts.exists())
         self.assertFalse(customers.exists())
+        self.assertFalse(sellers.exists())
 
     def test_company_scoping_and_isolation(self):
         """Rows carry the connector company; another company never sees them."""
@@ -268,9 +369,15 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
         self._refresh(connector_a)
         self._refresh(connector_b, payloads_by_url={"*": _ONE_ROW_PACK})
         Debt = self.env["collection.connector.bejerman.debt"]
-        for field in ("company_id",):
-            self.assertEqual(Debt._fields[field].related, "connector_id.company_id")
-            self.assertTrue(Debt._fields[field].store)
+        Seller = self.env["collection.connector.bejerman.seller"]
+        for model in (Debt, Seller):
+            field = model._fields["company_id"]
+            self.assertEqual(field.related, "connector_id.company_id")
+            self.assertTrue(field.store)
+        seller_reader = Seller.with_user(
+            self._create_user("snapshot_seller_reader", "base.group_user")
+        )
+        self.assertEqual(seller_reader.search([]).connector_id, connector_a)
         internal = self._create_user("snapshot_internal", "base.group_user")
         visible = Debt.with_user(internal).search([])
         self.assertTrue(visible)
@@ -289,6 +396,7 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
         for name in (
             "collection.connector.bejerman.debt",
             "collection.connector.bejerman.customer",
+            "collection.connector.bejerman.seller",
         ):
             reader = self.env[name].with_user(internal)
             self.assertTrue(reader.search([("connector_id", "=", connector.id)]))
@@ -314,7 +422,7 @@ class TestBejermanRelease(TransactionCase):
         read time, so no data migration is required.
         """
         manifest = load_manifest("collection_connector_bejerman")
-        self.assertEqual(manifest["version"], "19.0.1.1.0")
+        self.assertEqual(manifest["version"], "19.0.1.2.0")
         addon = Path(__file__).resolve().parent.parent
         self.assertFalse((addon / "migrations").exists())
 

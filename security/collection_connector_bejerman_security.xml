@@ -5,6 +5,11 @@
         <field name="model_id" ref="model_collection_connector_bejerman_debt" />
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="collection_connector_bejerman_seller_company_rule" model="ir.rule">
+        <field name="name">Bejerman Seller Snapshot: multi-company</field>
+        <field name="model_id" ref="model_collection_connector_bejerman_seller" />
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
     <record id="collection_connector_bejerman_customer_company_rule" model="ir.rule">
         <field name="name">Bejerman Customer Snapshot: multi-company</field>
         <field name="model_id" ref="model_collection_connector_bejerman_customer" />

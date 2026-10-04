@@ -14,8 +14,10 @@ Debt snapshot: the debt view (`Saldos al día/*`, one row per sales voucher) is 
 download, so it is never read per question. A refresh downloads the customers and the
 debt view in one session, keeps only vouchers with a positive local-currency balance
 (`CVE_SALDOMONLOC > 0`; reconciled and credit-note rows are dropped), and replaces the
-stored snapshot in one transaction (`collection.connector.bejerman.debt` and
-`collection.connector.bejerman.customer`). A failed refresh keeps the previous snapshot.
+stored snapshot in one transaction (`collection.connector.bejerman.debt`,
+`collection.connector.bejerman.customer` and `collection.connector.bejerman.seller`).
+The sellers are the voucher sellers (`CVEVEN_COD` / `VEN_DESC`) of every debt view row,
+open or not, taken from that same download. A failed refresh keeps the previous snapshot.
 Refresh runs every 4 hours (`ir.cron`) and from the administrator-only **Refresh Debt**
 button; the connector form shows the last refresh time and row counts. Before the first
 refresh, `list_customers` and `get_customer_debt` fail closed with the generic "not

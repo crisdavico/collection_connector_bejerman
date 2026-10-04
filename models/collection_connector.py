@@ -298,11 +298,13 @@ class CollectionConnectorBejerman(models.Model):
 
     @api.private
     def _bejerman_refresh_snapshot(self):
-        """Download customers and open debt, then replace this connector's snapshot.
+        """Download customers and the debt view, then replace this connector's snapshot.
 
         The ERP is read first, inside one Registro -> Cierre session, and nothing is
-        written until both answers mapped cleanly; the swap itself is one savepoint.
-        Any failure keeps the previous snapshot.
+        written until every answer mapped cleanly; the swap itself is one savepoint.
+        The sellers come from the same debt view download (every row, open or not),
+        so listing sellers never costs a Bejerman request. Any failure keeps the
+        previous snapshot.
         """
         self.ensure_one()
         kinds = self._bejerman_quotation_kinds()
@@ -311,15 +313,17 @@ class CollectionConnectorBejerman(models.Model):
         try:
             with self._bejerman_client() as client:
                 customers = mapping.map_customer_rows(client.tablas.obtener_clientes())
+                debt_rows = client.queries.obtener_json_query_vista(scenario, view)
                 # Debt of disabled or unknown customers is not brought.
                 debts = mapping.map_open_debt(
-                    client.queries.obtener_json_query_vista(scenario, view),
+                    debt_rows,
                     kinds,
                     customer_codes={row["customer_code"] for row in customers},
                 )
+                sellers = mapping.map_debt_sellers(debt_rows)
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
-        self._bejerman_replace_snapshot(customers, debts)
+        self._bejerman_replace_snapshot(customers, debts, sellers)
         return True
 
     @api.model
@@ -363,17 +367,20 @@ class CollectionConnectorBejerman(models.Model):
         }
 
     @api.private
-    def _bejerman_replace_snapshot(self, customers, debts):
+    def _bejerman_replace_snapshot(self, customers, debts, sellers):
         self.ensure_one()
         Customer = self.env["collection.connector.bejerman.customer"]
         Debt = self.env["collection.connector.bejerman.debt"]
+        Seller = self.env["collection.connector.bejerman.seller"]
         scope = [("connector_id", "=", self.id)]
         try:
             with self.env.cr.savepoint():
                 Customer.search(scope).unlink()
                 Debt.search(scope).unlink()
+                Seller.search(scope).unlink()
                 Customer.create([dict(row, connector_id=self.id) for row in customers])
                 Debt.create([dict(row, connector_id=self.id) for row in debts])
+                Seller.create([dict(row, connector_id=self.id) for row in sellers])
                 self.write(
                     {
                         "bejerman_snapshot_refreshed_at": fields.Datetime.now(),
