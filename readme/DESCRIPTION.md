@@ -40,4 +40,7 @@ commission is the seller binding's `commission_percent`, the phone is the bound 
 partner phone, and `active` means the bound user is in the company's enabled sellers.
 A seller without a binding is listed inactive, commission 0, no phone. The generic
 `collection` list drops inactive rows, so only bound and enabled sellers reach the
-import. The Bejerman Seller Scenario and View fields are unused and hidden.
+import. The Bejerman Seller Scenario and View fields are unused and hidden. On the
+connector form, the commission of a seller binding is editable only for Bejerman
+connectors (collections managers and administrators already hold write access on the
+binding); the next import keeps it.
