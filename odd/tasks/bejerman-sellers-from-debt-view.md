@@ -115,7 +115,24 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
       throwaway-DB column shim: `0 failed, 0 error(s) of 84 tests`. The ORM tests (admin
       and manager write the commission; next import keeps it) pass without a view change,
       which is the evidence that no ACL work is needed.
-- [ ] T4 Live check on `devel`: upgrade, refresh, list sellers (route: inline).
+- [x] T3b "Enable seller" onboarding (added 2026-10-04, user-approved). Reason: the generic
+      import (`collection` `_format_seller_list`) drops `active=False` rows, so a new
+      Bejerman seller can never get a user or binding through it. Add a Sellers list on the
+      Bejerman connector (seller snapshot) with an "Enable seller" action: a wizard where
+      the admin picks an existing internal user or creates one, sets phone and commission;
+      it creates/updates the binding, writes the phone on the user's partner and adds the
+      user to `company.enabled_seller_ids`. Admin-only, Bejerman-only, no Bejerman call,
+      inside this addon (route: delegated writer).
+      Commit: `feat(collection_connector_bejerman): enable and disable sellers from the connector`
+      (hash recorded in the next docs commit). Manifest 19.0.1.3.0. UI: Collections >
+      Configuration > Connectors > the Bejerman connector > Sellers tab > row button
+      "Enable seller" (wizard) / "Disable seller". New user login is the generic
+      `collection.<company id>.<code>`, via `_collection_create_connector_seller_users`.
+      RED: `1 failed, 21 error(s) of 97 tests` (8 known + the 13 new tests).
+      GREEN: `0 failed, 8 error(s) of 97 tests` (8 known only); with the throwaway-DB column
+      shim `0 failed, 0 error(s) of 97 tests`.
+- [ ] T4 Live check on `devel`: upgrade, refresh, list sellers, enable one seller
+      (route: inline).
 
 ## Acceptance criteria
 
@@ -123,13 +140,17 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
 - `list_sellers` returns code/name from the snapshot with Odoo commission/phone/enabled;
   new sellers inactive with commission 0.
 - Re-import after the admin edits commission/phone/enabled keeps those values.
+- An admin can enable a Bejerman seller from the connector without any import: binding,
+  phone, commission and enabled are set in one step; the seller then reads its customers.
 - Test Connection passes on devel with the seller fields empty.
 - Module suite: 0 failures (8 known base errors allowed).
 
 ## Progress
 
 - 2026-10-04: exploration done; design approved by user; document created.
+- 2026-10-04: T0-T3 done. Blocker found: generic import ignores inactive sellers, so new
+  sellers cannot be onboarded. User approved T3b ("Enable seller" action).
 
 ## Next step
 
-T0.
+T3b.

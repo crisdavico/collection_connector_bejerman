@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_bejerman_seller_enable_form" model="ir.ui.view">
+        <field name="name">collection.connector.bejerman.seller.enable.form</field>
+        <field name="model">collection.connector.bejerman.seller.enable</field>
+        <field name="arch" type="xml">
+            <form string="Enable seller">
+                <group>
+                    <group>
+                        <field name="seller_id" invisible="1" />
+                        <field name="seller_code" />
+                        <field name="seller_name" />
+                    </group>
+                    <group>
+                        <field name="user_mode" widget="radio" />
+                        <field
+              name="user_id"
+              invisible="user_mode != 'existing'"
+              required="user_mode == 'existing'"
+            />
+                        <field
+              name="new_user_name"
+              invisible="user_mode != 'new'"
+              required="user_mode == 'new'"
+            />
+                        <field name="phone" required="1" />
+                        <field name="commission_percent" />
+                    </group>
+                </group>
+                <footer>
+                    <button
+            name="action_confirm"
+            type="object"
+            string="Enable seller"
+            class="btn-primary"
+            data-hotkey="q"
+          />
+                    <button string="Cancel" special="cancel" data-hotkey="x" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
