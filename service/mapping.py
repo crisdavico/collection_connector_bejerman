@@ -102,40 +102,6 @@ def _money(value: Any) -> float:
         return 0.0
 
 
-def _commission(value: Any) -> float | None:
-    try:
-        percent = float(value if value is not None else 0)
-    except (TypeError, ValueError):
-        return None
-    if percent < 0 or percent > 100:
-        return None
-    return percent
-
-
-def map_sellers(payload: Any) -> list[dict[str, Any]]:
-    """Sqlite-raw seller rows; inactive omitted; commission 0–100 inclusive."""
-    sellers = []
-    for row in as_rows(payload):
-        if not row_is_active(value_by_suffix(row, "active", "Habilitado")):
-            continue
-        commission = _commission(value_by_suffix(row, "commission_percent", "Comision"))
-        if commission is None:
-            continue
-        seller_id = trim_code(value_by_suffix(row, "id", "Codigo"))
-        if not seller_id:
-            continue
-        sellers.append(
-            {
-                "id": seller_id,
-                "name": _text(value_by_suffix(row, "name", "Descripcion")),
-                "mobile": _text(value_by_suffix(row, "mobile", "Telefono")),
-                "active": True,
-                "commission_percent": commission,
-            }
-        )
-    return sellers
-
-
 def find_customer_row(
     payload: Any,
     external_seller_id: Any,

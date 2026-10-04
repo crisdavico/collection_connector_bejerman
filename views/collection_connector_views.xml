@@ -72,16 +72,6 @@
           groups="base.group_system"
         />
                 <field
-          name="bejerman_seller_scenario"
-          invisible="type != 'bejerman'"
-          groups="base.group_system"
-        />
-                <field
-          name="bejerman_seller_view"
-          invisible="type != 'bejerman'"
-          groups="base.group_system"
-        />
-                <field
           name="bejerman_debt_scenario"
           invisible="type != 'bejerman'"
           groups="base.group_system"

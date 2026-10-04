@@ -2,7 +2,7 @@ Read-only Bejerman seller, customer, and debt source for Collections.
 
 Adds connector type `bejerman`. Each ERP read opens a SOAP session over a vendored httpx
 client: Registro, then Ejecutar, then Cierre even when Ejecutar fails. Reads need TABLAS
-`ObtenerClientes` plus two Queries views (sellers and debt); missing grants fail closed.
+`ObtenerClientes` plus the debt Queries view; missing grants fail closed.
 There is no receipt write-back, no MCP, no menus, no sample ERP data, and no
 `post_init_hook`. Depends on `collection`. Requires the `httpx` Python extra.
 Credentials and Test Connection are Settings-only (`base.group_system`); clave is
@@ -29,5 +29,15 @@ external id is the stable `type|point|letter|number` key; `state` is `overdue` w
 due date is before today in the company timezone, else `open`, computed at read time.
 Optionally, set Bejerman Debt Filter Field (for example `CVE_CODCLI`) once the ERP
 exposes a filterable child view: debt is then read live per customer instead of from the
-snapshot. Test Connection probes Registro, `ObtenerClientes`, and the seller view, then
-Cierre; the debt view is exercised by the refresh.
+snapshot. Test Connection probes Registro and `ObtenerClientes`, then Cierre; the debt
+view is exercised by the refresh.
+
+Sellers: Bejerman has no seller view, so `list_sellers` reads the seller snapshot and
+makes no Bejerman call (before the first refresh it fails closed like the customer
+reads). Bejerman supplies only the code and name; Odoo keeps the rest and
+`list_sellers` merges it back so an import never overwrites the administrator's values:
+commission is the seller binding's `commission_percent`, the phone is the bound user's
+partner phone, and `active` means the bound user is in the company's enabled sellers.
+A seller without a binding is listed inactive, commission 0, no phone. The generic
+`collection` list drops inactive rows, so only bound and enabled sellers reach the
+import. The Bejerman Seller Scenario and View fields are unused and hidden.

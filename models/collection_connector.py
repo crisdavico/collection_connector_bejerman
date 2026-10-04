@@ -2,7 +2,6 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 import logging
-import re
 from urllib.parse import urlparse
 
 import pytz
@@ -31,8 +30,6 @@ _REQUIRED_SETTINGS = (
     "bejerman_empresa",
     "bejerman_puesto",
 )
-# Only a short server result code (e.g. ``ERR``) may be shown to the admin.
-_SHORT_RESULT_CODE = re.compile(r"[A-Za-z0-9_-]{1,16}")
 
 
 def _customer_payload(customer):
@@ -104,6 +101,8 @@ class CollectionConnectorBejerman(models.Model):
         string="Bejerman CA Bundle",
         groups="base.group_system",
     )
+    # Unused since sellers come from the debt view, and hidden in the form. Kept as
+    # fields because the `collection` settings wizard still references them.
     bejerman_seller_scenario = fields.Char(
         groups="base.group_system",
     )
@@ -240,15 +239,6 @@ class CollectionConnectorBejerman(models.Model):
             message = _(
                 "Connected to Bejerman, but the customer list could not be read."
             )
-        elif stage == "seller_view":
-            message = _(
-                "Bejerman could not run the seller view '%(scenario)s' / '%(view)s'.",
-                scenario=self.bejerman_seller_scenario,
-                view=self.bejerman_seller_view,
-            )
-            code = (getattr(exc, "resultado", None) or "").strip()
-            if _SHORT_RESULT_CODE.fullmatch(code):
-                message += " " + _("Server result: %(code)s.", code=code)
         else:
             message = _("Bejerman answered, but the session could not be closed.")
         raise UserError(message) from None
@@ -258,24 +248,13 @@ class CollectionConnectorBejerman(models.Model):
         self.ensure_one()
         settings = self._bejerman_test_settings()
         host = urlparse(settings.ws_url).hostname
-        scenario = (self.bejerman_seller_scenario or "").strip()
-        view = (self.bejerman_seller_view or "").strip()
         stage = "login"
-        # The debt view is a ~200 MB download: only the snapshot refresh reads it.
+        # Bejerman has no seller view, and the debt view is a ~200 MB download that
+        # only the snapshot refresh reads: Test Connection is login plus customers.
         try:
             with BejermanClient(settings) as client:
                 stage = "customers"
                 client.tablas.obtener_clientes()
-                stage = "seller_view"
-                if not (scenario and view):
-                    raise UserError(
-                        _(
-                            "Connected to Bejerman, but the seller scenario and "
-                            "view are not configured. Set both to test the seller "
-                            "view."
-                        )
-                    )
-                client.queries.obtener_json_query_vista(scenario, view)
                 stage = "close"
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_test_failed(stage, exc, host)
@@ -392,24 +371,47 @@ class CollectionConnectorBejerman(models.Model):
             self._bejerman_refresh_failed(exc)
 
     @api.private
-    def _bejerman_list_sellers(self):
-        self.ensure_one()
-
-        def _list_sellers(client):
-            rows = client.queries.obtener_json_query_vista(
-                self.bejerman_seller_scenario or "",
-                self.bejerman_seller_view or "",
-            )
-            return mapping.map_sellers(rows)
-
-        return self._bejerman_call(_list_sellers)
-
-    @api.private
     def _bejerman_require_snapshot(self):
         """Fail closed before the first refresh instead of downloading inline."""
         self.ensure_one()
         if not self.bejerman_snapshot_refreshed_at:
             self._bejerman_misconfigured()
+
+    @api.private
+    def _bejerman_list_sellers(self):
+        """Seller rows from the snapshot, merged with what Odoo maintains.
+
+        Bejerman only supplies code and name. Commission is the binding's, the phone
+        is the bound user's partner phone and ``active`` means the bound user is in
+        the company's enabled sellers, so a later import never overwrites the admin's
+        values. A seller with no binding yet is inactive, commission 0, no phone.
+        Makes no Bejerman call.
+        """
+        self.ensure_one()
+        self._bejerman_require_snapshot()
+        sellers = self.env["collection.connector.bejerman.seller"].search(
+            [("connector_id", "=", self.id)]
+        )
+        bindings = {
+            binding.external_seller_id: binding for binding in self.seller_binding_ids
+        }
+        enabled = self.company_id.enabled_seller_ids
+        rows = []
+        for seller in sellers:
+            binding = bindings.get(seller.seller_code)
+            user = binding.user_id if binding else self.env["res.users"]
+            rows.append(
+                {
+                    "id": seller.seller_code,
+                    "name": seller.name or "",
+                    "mobile": user.partner_id.phone or "",
+                    "active": bool(user) and user in enabled,
+                    "commission_percent": binding.commission_percent
+                    if binding
+                    else 0.0,
+                }
+            )
+        return rows
 
     @api.private
     def _bejerman_list_customers(self, external_seller_id):
