@@ -110,6 +110,13 @@
           groups="base.group_system"
         />
             </xpath>
+            <!-- Commission is maintained in Odoo for Bejerman, which has no seller table. -->
+            <xpath
+        expr="//field[@name='seller_binding_ids']/list/field[@name='commission_percent']"
+        position="attributes"
+      >
+                <attribute name="readonly">parent.type != 'bejerman'</attribute>
+            </xpath>
         </field>
     </record>
 </odoo>

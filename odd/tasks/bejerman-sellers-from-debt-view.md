@@ -89,7 +89,7 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
       Connection without seller view; hide seller scenario/view in the form (route:
       delegated writer).
       Commit: `feat(collection_connector_bejerman): list sellers from the snapshot`
-      (hash recorded in the final docs commit). `map_sellers` and its `_commission` helper
+      Commit `29e2178`. `map_sellers` and its `_commission` helper
       removed; Test Connection is Registro, ObtenerClientes, Cierre (3 calls).
       RED: `2 failed, 17 error(s) of 81 tests` (8 known errors plus the new seller list,
       import and Test Connection tests, and the 3 updated ones).
@@ -101,8 +101,20 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
       is neither bound nor given a user by the import, and an import with no enabled
       bound seller replaces `enabled_seller_ids` with an empty set. New sellers therefore
       cannot be onboarded through the import alone; see the final report.
-- [ ] T3 Editable commission on Bejerman seller bindings (inherited view) (route:
+- [x] T3 Editable commission on Bejerman seller bindings (inherited view) (route:
       delegated writer).
+      Commit: `feat(collection_connector_bejerman): edit seller commission on Bejerman bindings`
+      (hash recorded in the closing docs commit). The inherited form view sets the binding
+      list `commission_percent` to `readonly="parent.type != 'bejerman'"`. No ACL change in
+      `collection` was needed: `group_collection_manager` and `base.group_system` already
+      hold write on `collection.connector.seller.binding` (and on the connector).
+      RED: `2 failed, 8 error(s) of 86 tests` (the 8 known errors; the 2 failures were
+      Form-based drafts, replaced by an arch assertion because `odoo.tests.Form` does not
+      apply the list-level readonly). The arch test fails against the old `readonly="1"`.
+      GREEN: `0 failed, 8 error(s) of 84 tests` (the 8 known errors only); with the
+      throwaway-DB column shim: `0 failed, 0 error(s) of 84 tests`. The ORM tests (admin
+      and manager write the commission; next import keeps it) pass without a view change,
+      which is the evidence that no ACL work is needed.
 - [ ] T4 Live check on `devel`: upgrade, refresh, list sellers (route: inline).
 
 ## Acceptance criteria
