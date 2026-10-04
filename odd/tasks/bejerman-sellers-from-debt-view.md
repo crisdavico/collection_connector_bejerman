@@ -104,7 +104,7 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
 - [x] T3 Editable commission on Bejerman seller bindings (inherited view) (route:
       delegated writer).
       Commit: `feat(collection_connector_bejerman): edit seller commission on Bejerman bindings`
-      (hash recorded in the closing docs commit). The inherited form view sets the binding
+      Commit `ec10bb0`. The inherited form view sets the binding
       list `commission_percent` to `readonly="parent.type != 'bejerman'"`. No ACL change in
       `collection` was needed: `group_collection_manager` and `base.group_system` already
       hold write on `collection.connector.seller.binding` (and on the connector).
