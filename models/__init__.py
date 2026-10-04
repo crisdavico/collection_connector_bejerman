@@ -4,3 +4,4 @@
 from . import collection_connector
 from . import collection_connector_bejerman_customer
 from . import collection_connector_bejerman_debt
+from . import collection_connector_bejerman_seller
