@@ -2,6 +2,8 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 import logging
+import re
+from urllib.parse import urlparse
 
 import pytz
 
@@ -10,13 +12,27 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tools.translate import _
 
 from ..service import mapping
-from ..service.errors import BejermanError
+from ..service.errors import (
+    BejermanConfigError,
+    BejermanError,
+    BejermanTransportError,
+)
 from ..service.session import BejermanClient
 from ..service.settings import Credentials, Settings
 
 _logger = logging.getLogger(__name__)
 
 DEFAULT_QUOTATION_KINDS = "PRE"
+# Settings the SOAP session cannot start without (the branch is optional).
+_REQUIRED_SETTINGS = (
+    "bejerman_ws_url",
+    "bejerman_usuario",
+    "bejerman_clave",
+    "bejerman_empresa",
+    "bejerman_puesto",
+)
+# Only a short server result code (e.g. ``ERR``) may be shown to the admin.
+_SHORT_RESULT_CODE = re.compile(r"[A-Za-z0-9_-]{1,16}")
 
 
 def _customer_payload(customer):
@@ -138,22 +154,28 @@ class CollectionConnectorBejerman(models.Model):
         raise UserError(_("The collection connector is not configured."))
 
     @api.private
+    def _bejerman_build_settings(self):
+        """Build ``Settings`` from the fields; raises ``BejermanConfigError``."""
+        self.ensure_one()
+        return Settings(
+            ws_url=self.bejerman_ws_url or "",
+            credentials=Credentials(
+                usuario=self.bejerman_usuario or "",
+                clave=self.bejerman_clave or "",
+                empresa=self.bejerman_empresa or "",
+                puesto=self.bejerman_puesto or "",
+                sucursal=self.bejerman_sucursal or "",
+            ),
+            timeout=float(self.bejerman_timeout or 60),
+            allow_insecure=bool(self.bejerman_allow_insecure),
+            ca_bundle=self.bejerman_ca_bundle or "",
+        )
+
+    @api.private
     def _bejerman_settings(self):
         self.ensure_one()
         try:
-            return Settings(
-                ws_url=self.bejerman_ws_url or "",
-                credentials=Credentials(
-                    usuario=self.bejerman_usuario or "",
-                    clave=self.bejerman_clave or "",
-                    empresa=self.bejerman_empresa or "",
-                    puesto=self.bejerman_puesto or "",
-                    sucursal=self.bejerman_sucursal or "",
-                ),
-                timeout=float(self.bejerman_timeout or 60),
-                allow_insecure=bool(self.bejerman_allow_insecure),
-                ca_bundle=self.bejerman_ca_bundle or "",
-            )
+            return self._bejerman_build_settings()
         except BejermanError:
             self._bejerman_misconfigured()
 
@@ -170,19 +192,94 @@ class CollectionConnectorBejerman(models.Model):
             self._bejerman_misconfigured()
 
     @api.private
+    def _bejerman_test_settings(self):
+        """Settings for Test Connection; failures name the setting, not its value."""
+        missing = [
+            self._fields[name].string
+            for name in _REQUIRED_SETTINGS
+            if not (self[name] or "").strip()
+        ]
+        if missing:
+            raise UserError(
+                _(
+                    "The Bejerman connector is not configured. "
+                    "Missing settings: %(settings)s.",
+                    settings=", ".join(missing),
+                )
+            )
+        try:
+            return self._bejerman_build_settings()
+        except BejermanConfigError as exc:
+            # Config errors carry fixed texts that never quote a value.
+            raise UserError(
+                _("The Bejerman settings are not valid: %(reason)s.", reason=str(exc))
+            ) from None
+
+    @api.private
+    def _bejerman_test_failed(self, stage, exc, host):
+        """Log the failure class only, then raise the message for the failed stage."""
+        _logger.warning(
+            "Bejerman test connection failed for connector %s at %s: %s",
+            self.id,
+            stage,
+            type(exc).__name__,
+        )
+        if isinstance(exc, BejermanTransportError):
+            message = _(
+                "Could not reach the Bejerman server at %(host)s. "
+                "Check the WS URL, the network connection and the certificate "
+                "settings.",
+                host=host,
+            )
+        elif stage == "login":
+            message = _(
+                "Bejerman rejected the login. "
+                "Check the user, password, company and workstation."
+            )
+        elif stage == "customers":
+            message = _(
+                "Connected to Bejerman, but the customer list could not be read."
+            )
+        elif stage == "seller_view":
+            message = _(
+                "Bejerman could not run the seller view '%(scenario)s' / '%(view)s'.",
+                scenario=self.bejerman_seller_scenario,
+                view=self.bejerman_seller_view,
+            )
+            code = (getattr(exc, "resultado", None) or "").strip()
+            if _SHORT_RESULT_CODE.fullmatch(code):
+                message += " " + _("Server result: %(code)s.", code=code)
+        else:
+            message = _("Bejerman answered, but the session could not be closed.")
+        raise UserError(message) from None
+
+    @api.private
     def _bejerman_test_connection(self):
         self.ensure_one()
-
+        settings = self._bejerman_test_settings()
+        host = urlparse(settings.ws_url).hostname
+        scenario = (self.bejerman_seller_scenario or "").strip()
+        view = (self.bejerman_seller_view or "").strip()
+        stage = "login"
         # The debt view is a ~200 MB download: only the snapshot refresh reads it.
-        def _probe(client):
-            client.tablas.obtener_clientes()
-            client.queries.obtener_json_query_vista(
-                self.bejerman_seller_scenario or "",
-                self.bejerman_seller_view or "",
-            )
-            return True
-
-        return self._bejerman_call(_probe)
+        try:
+            with BejermanClient(settings) as client:
+                stage = "customers"
+                client.tablas.obtener_clientes()
+                stage = "seller_view"
+                if not (scenario and view):
+                    raise UserError(
+                        _(
+                            "Connected to Bejerman, but the seller scenario and "
+                            "view are not configured. Set both to test the seller "
+                            "view."
+                        )
+                    )
+                client.queries.obtener_json_query_vista(scenario, view)
+                stage = "close"
+        except (BejermanError, TypeError, ValueError) as exc:
+            self._bejerman_test_failed(stage, exc, host)
+        return True
 
     @api.private
     def _bejerman_refresh_failed(self, exc):
