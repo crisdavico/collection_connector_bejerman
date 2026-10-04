@@ -44,3 +44,15 @@ import. The Bejerman Seller Scenario and View fields are unused and hidden. On t
 connector form, the commission of a seller binding is editable only for Bejerman
 connectors (collections managers and administrators already hold write access on the
 binding); the next import keeps it.
+
+Enabling a seller: because the generic import only lists sellers that are already
+bound and enabled, a new seller is enabled from the connector form, **Sellers** tab
+(the seller snapshot with its Odoo user, commission and enabled state). The row
+button **Enable seller** opens a wizard: pick an existing internal user or create one
+(login `collection.<company id>.<code>`, name prefilled from Bejerman), then set the
+phone and commission. Confirming creates or updates the binding, writes the phone on
+the user's partner and adds the user to the company's enabled sellers, with no
+Bejerman call and no import. A user already bound to another code, or a phone used by
+another enabled seller, is refused. **Disable seller** removes the user from the
+enabled sellers and keeps the binding. Administrators and collections managers only,
+Bejerman connectors only.

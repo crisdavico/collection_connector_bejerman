@@ -1006,6 +1006,7 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             [
                 "security/ir.model.access.csv",
                 "security/collection_connector_bejerman_security.xml",
+                "views/collection_connector_bejerman_seller_enable_views.xml",
                 "views/collection_connector_views.xml",
                 "data/ir_cron.xml",
             ],

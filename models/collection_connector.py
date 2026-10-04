@@ -127,6 +127,13 @@ class CollectionConnectorBejerman(models.Model):
     )
     # Snapshot bookkeeping is not sensitive and must stay readable by internal
     # users: the read path checks `bejerman_snapshot_refreshed_at` for emptiness.
+    bejerman_seller_ids = fields.One2many(
+        comodel_name="collection.connector.bejerman.seller",
+        inverse_name="connector_id",
+        string="Bejerman Sellers",
+        readonly=True,
+        copy=False,
+    )
     bejerman_snapshot_refreshed_at = fields.Datetime(readonly=True, copy=False)
     bejerman_snapshot_customer_count = fields.Integer(readonly=True, copy=False)
     bejerman_snapshot_debt_count = fields.Integer(readonly=True, copy=False)

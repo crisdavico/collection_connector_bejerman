@@ -4,5 +4,6 @@
 from . import test_bejerman_commission
 from . import test_bejerman_connector
 from . import test_bejerman_debt_mapping
+from . import test_bejerman_enable_seller
 from . import test_bejerman_snapshot
 from . import test_bejerman_test_connection

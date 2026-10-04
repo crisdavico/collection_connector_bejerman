@@ -110,6 +110,37 @@
           groups="base.group_system"
         />
             </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page
+          string="Sellers"
+          name="bejerman_sellers"
+          invisible="type != 'bejerman'"
+        >
+                    <field name="bejerman_seller_ids">
+                        <list create="0" delete="0" edit="0">
+                            <field name="seller_code" />
+                            <field name="name" />
+                            <field name="user_id" />
+                            <field name="commission_percent" />
+                            <field name="is_enabled" widget="boolean" />
+                            <button
+                name="action_bejerman_enable_seller"
+                type="object"
+                string="Enable seller"
+                invisible="is_enabled"
+                groups="base.group_system,collection.group_collection_manager"
+              />
+                            <button
+                name="action_bejerman_disable_seller"
+                type="object"
+                string="Disable seller"
+                invisible="not is_enabled"
+                groups="base.group_system,collection.group_collection_manager"
+              />
+                        </list>
+                    </field>
+                </page>
+            </xpath>
             <!-- Commission is maintained in Odoo for Bejerman, which has no seller table. -->
             <xpath
         expr="//field[@name='seller_binding_ids']/list/field[@name='commission_percent']"
