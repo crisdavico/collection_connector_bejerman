@@ -77,7 +77,7 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
 - [x] T1 Seller snapshot: `map_debt_sellers(rows)` over all debt rows, new seller snapshot
       model, refresh stores sellers in the same swap (route: delegated writer).
       Commit: `feat(collection_connector_bejerman): snapshot sellers from the debt view`
-      (hash recorded in the final docs commit). Manifest bumped to 19.0.1.2.0 (new model).
+      Commit `ffc6645`. Manifest bumped to 19.0.1.2.0 (new model).
       RED (2026-10-04): `1 failed, 19 error(s) of 79 tests` = 8 known `autopost_bills` errors
       plus the 4 new mapping tests, the new seller snapshot tests and the version test.
       GREEN: `0 failed, 8 error(s) of 79 tests` (the 8 known errors only). Extra check: in the
@@ -85,9 +85,22 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
       added by hand so the raw-SQL tests run: `0 failed, 0 error(s) of 79 tests`, which
       also exercises the new company-scoping and ACL assertions. One download unchanged:
       the 4 SOAP calls per refresh are asserted.
-- [ ] T2 `_bejerman_list_sellers` from the seller snapshot merged with Odoo values; Test
+- [x] T2 `_bejerman_list_sellers` from the seller snapshot merged with Odoo values; Test
       Connection without seller view; hide seller scenario/view in the form (route:
       delegated writer).
+      Commit: `feat(collection_connector_bejerman): list sellers from the snapshot`
+      (hash recorded in the final docs commit). `map_sellers` and its `_commission` helper
+      removed; Test Connection is Registro, ObtenerClientes, Cierre (3 calls).
+      RED: `2 failed, 17 error(s) of 81 tests` (8 known errors plus the new seller list,
+      import and Test Connection tests, and the 3 updated ones).
+      GREEN: `0 failed, 8 error(s) of 81 tests` (the 8 known errors only); with the
+      `res_partner` / `res_company` columns added by hand in the throwaway DB so the
+      raw-SQL tests run: `0 failed, 0 error(s) of 81 tests`.
+      ACTUAL IMPORT BEHAVIOUR (asserted by tests, decision needed): `list_sellers()` of
+      `collection` (`_format_seller_list`) drops `active=False` rows, so an unbound seller
+      is neither bound nor given a user by the import, and an import with no enabled
+      bound seller replaces `enabled_seller_ids` with an empty set. New sellers therefore
+      cannot be onboarded through the import alone; see the final report.
 - [ ] T3 Editable commission on Bejerman seller bindings (inherited view) (route:
       delegated writer).
 - [ ] T4 Live check on `devel`: upgrade, refresh, list sellers (route: inline).

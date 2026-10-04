@@ -124,13 +124,14 @@ _BEJERMAN_CONFIG_FIELDS = (
     "bejerman_timeout",
     "bejerman_allow_insecure",
     "bejerman_ca_bundle",
-    "bejerman_seller_scenario",
-    "bejerman_seller_view",
     "bejerman_debt_scenario",
     "bejerman_debt_view",
     "bejerman_debt_filter_field",
     "bejerman_quotation_kinds",
 )
+# Kept as fields (the `collection` settings wizard references them) but unused
+# and hidden: still admin-only.
+_UNUSED_SELLER_FIELDS = ("bejerman_seller_scenario", "bejerman_seller_view")
 _LEAK_TOKENS = (
     _ERROR_MSG,
     _SESSION_TOKEN,
@@ -171,38 +172,6 @@ _INVOICE_KEYS = frozenset(
     }
 )
 
-_SELLER_ROWS = [
-    {
-        "CpoCalc_id": "000E",
-        "CpoCalc_name": "Ana Pérez",
-        "CpoCalc_mobile": "5491155510001",
-        "CpoCalc_active": True,
-        "CpoCalc_commission_percent": 0,
-    },
-    {
-        "CpoCalc_id": "00F",
-        "CpoCalc_name": "Inactive Seller",
-        "CpoCalc_mobile": "5491100000000",
-        "CpoCalc_active": False,
-        "CpoCalc_commission_percent": 10,
-    },
-    {
-        "CpoCalc_id": "00G",
-        "CpoCalc_name": "Bruno Díaz",
-        "CpoCalc_mobile": "5491166660002",
-        "CpoCalc_active": True,
-        "CpoCalc_commission_percent": 12.5,
-    },
-]
-_SELLER_ROWS_B = [
-    {
-        "CpoCalc_id": "00B",
-        "CpoCalc_name": "Company B Seller",
-        "CpoCalc_mobile": "5491199990009",
-        "CpoCalc_active": True,
-        "CpoCalc_commission_percent": 5,
-    },
-]
 _CLIENTES = [
     {
         "Cliente_Codigo": "000123",
@@ -294,15 +263,6 @@ _DEBT_ROWS = [
     _debt_row(
         "FHK", "00004", "A", "00001235", "000124", "2026-05-01T00:00:00.000Z", 999
     ),
-]
-_PREFIX_SELLERS = [
-    {
-        f"{_QUERY_PREFIX}_id": "000E",
-        f"{_QUERY_PREFIX}_name": "Ana",
-        f"{_QUERY_PREFIX}_mobile": "54911",
-        f"{_QUERY_PREFIX}_active": True,
-        f"{_QUERY_PREFIX}_commission_percent": 1,
-    },
 ]
 _PREFIX_DEBT = [
     _debt_row(
@@ -396,7 +356,6 @@ def _erp_post(
     body = content.decode("utf-8") if isinstance(content, bytes) else str(content or "")
     pack = (payloads_by_url or {}).get(url) or (payloads_by_url or {}).get("*") or {}
     clientes = pack.get("clientes", _CLIENTES)
-    sellers = pack.get("sellers", _SELLER_ROWS)
     debts = pack.get("debts", _DEBT_ROWS)
     fail = set(fail)
     if "EFlexSDK_WSCierreProceso" in body:
@@ -416,11 +375,10 @@ def _erp_post(
         is_debt = view == _DEBT_VIEW or scenario == _DEBT_SCENARIO
         if is_debt and "debt_view" in fail:
             return _xml_response(_EJECUTAR_ERROR)
-        if (not is_debt) and "seller_view" in fail:
-            return _xml_response(_EJECUTAR_ERROR)
         if is_debt:
             return _xml_response(_ejecutar_ok(debts, double_encoded=True))
-        return _xml_response(_ejecutar_ok(sellers))
+        # Bejerman has no seller view: any other view must never be asked for.
+        return _xml_response(_EJECUTAR_ERROR)
     return _xml_response(_EJECUTAR_ERROR)
 
 
@@ -506,8 +464,6 @@ class BejermanTestMixin:
             "bejerman_sucursal": "",
             "bejerman_timeout": 60,
             "bejerman_allow_insecure": False,
-            "bejerman_seller_scenario": _SELLER_SCENARIO,
-            "bejerman_seller_view": _SELLER_VIEW,
             "bejerman_debt_scenario": _DEBT_SCENARIO,
             "bejerman_debt_view": _DEBT_VIEW,
             "bejerman_quotation_kinds": "PRE",
@@ -686,12 +642,7 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self.assertEqual(mapping.document_kind("FC A", "NP,PR"), "invoice")
         self.assertEqual(mapping.document_kind("NP", "NP,PR"), "quotation")
         self.assertEqual(mapping.document_kind("RC", "NP,PR"), "invoice")
-        sellers = mapping.map_sellers(_SELLER_ROWS)
-        ids = [row["id"] for row in sellers]
-        self.assertIn("E", ids)
-        self.assertNotIn("F", ids)
-        zero = next(row for row in sellers if row["id"] == "E")
-        self.assertEqual(zero["commission_percent"], 0)
+        self.assertFalse(hasattr(mapping, "map_sellers"))
 
     def test_four_ops_return_sqlite_raw_shapes(self):
         """Four read ops return sqlite raw keys with no MCP source."""
@@ -734,9 +685,10 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self.assertFalse(hasattr(connector, "_bejerman_create_receipt"))
 
     def test_connection_probe_then_cierre(self):
-        """Test Connection: Registro, ObtenerClientes, seller view, then Cierre.
+        """Test Connection: Registro, ObtenerClientes, then Cierre.
 
-        The debt view is ~200 MB, so it is exercised by the snapshot refresh only.
+        There is no seller view, and the ~200 MB debt view is exercised by the
+        snapshot refresh only.
         """
         connector = self._make_connector()
         with _patch_httpx() as mock_post:
@@ -745,15 +697,14 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         actions = [_call_soap_action(call) for call in mock_post.call_args_list]
         self.assertEqual(actions[0], _SOAPACTION_REGISTRO)
         self.assertEqual(actions[-1], _SOAPACTION_CIERRE)
-        self.assertEqual(len(actions), 4)
+        self.assertEqual(len(actions), 3)
         bodies = [_call_body(call) for call in mock_post.call_args_list]
         self.assertIn("ObtenerClientes", bodies[1])
-        self.assertIn(_SELLER_VIEW, bodies[2])
         self.assertIn("EFlexSDK_WSCierreProceso", bodies[-1])
-        self.assertFalse(any(_DEBT_VIEW in body for body in bodies))
+        self.assertFalse(any("ObtenerJsonQueryVista" in body for body in bodies))
 
-    def test_missing_obtener_clientes_or_view_fail_closed(self):
-        """Missing ObtenerClientes or a Query view UserError; Cierre still runs."""
+    def test_missing_obtener_clientes_fails_closed(self):
+        """A missing ObtenerClientes is a UserError; Cierre still runs."""
         connector = self._make_connector()
         with _patch_httpx(fail=("ObtenerClientes",)) as mock_post:
             with self.assertRaises(UserError) as ctx:
@@ -768,28 +719,130 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self.assertEqual(actions[-1], _SOAPACTION_CIERRE)
         self.assertEqual(len(actions), 3)
 
-        with _patch_httpx(fail=("seller_view",)) as mock_view:
-            with self.assertRaises(UserError) as view_ctx:
-                connector._bejerman_list_sellers()
-        self.assertEqual(str(view_ctx.exception), _NOT_CONFIGURED)
-        self._assert_no_leak(str(view_ctx.exception))
-        view_actions = [_call_soap_action(call) for call in mock_view.call_args_list]
-        self.assertEqual(view_actions[-1], _SOAPACTION_CIERRE)
-
-    def test_list_sellers_suffix_trim_zero_commission(self):
-        """Prefixed keys map by suffix; pad trimmed; inactive omitted; zero kept."""
+    def test_list_sellers_before_first_refresh_fails_closed_without_a_call(self):
+        """No snapshot yet: the generic error, and nothing is sent to Bejerman."""
         connector = self._make_connector()
-        with _patch_httpx():
+        with _patch_httpx() as mock_post:
+            with self.assertRaises(UserError) as ctx:
+                connector._bejerman_list_sellers()
+        self._assert_clean_user_error(ctx.exception)
+        mock_post.assert_not_called()
+
+    def _seller_pack(self):
+        rows = [
+            *_DEBT_ROWS,
+            _debt_row(
+                "FHK",
+                "00004",
+                "A",
+                "00005555",
+                "000123",
+                "2026-03-01",
+                0,
+                vendedor="00SA1",
+                vendedor_nombre="SANCHEZ ANA",
+            ),
+        ]
+        return {"clientes": _CLIENTES, "debts": rows}
+
+    def _bind_seller(self, connector, code, phone, commission, enabled=True):
+        """Bind a fresh internal user to ``code``; optionally enable it."""
+        company = connector.company_id
+        user = company._collection_create_connector_seller_users(
+            [{"external_seller_id": code, "name": f"User {code}", "mobile": phone}]
+        )
+        self.env["collection.connector.seller.binding"].create(
+            {
+                "connector_id": connector.id,
+                "external_seller_id": code,
+                "user_id": user.id,
+                "commission_percent": commission,
+            }
+        )
+        if enabled:
+            company.write({"enabled_seller_ids": [(4, user.id)]})
+        return user
+
+    def test_list_sellers_reads_the_snapshot_without_calling_bejerman(self):
+        """New sellers come in inactive, commission 0, blank mobile; no POST."""
+        connector = self._make_connector()
+        self._refresh(connector, payloads_by_url={"*": self._seller_pack()})
+        with _patch_httpx() as mock_post:
             sellers = connector._bejerman_list_sellers()
-        by_id = {row["id"]: row for row in sellers}
-        self.assertIn("E", by_id)
-        self.assertEqual(by_id["E"]["name"], "Ana Pérez")
-        self.assertEqual(by_id["E"]["commission_percent"], 0)
-        self.assertNotIn("F", by_id)
-        self.assertNotIn("00F", by_id)
-        self.assertIn("G", by_id)
-        self.assertEqual(by_id["G"]["commission_percent"], 12.5)
-        self.assertTrue(by_id["E"]["active"])
+        mock_post.assert_not_called()
+        self.assertEqual(
+            sellers,
+            [
+                {
+                    "id": "DN",
+                    "name": "SYNTHETIC SELLER",
+                    "mobile": "",
+                    "active": False,
+                    "commission_percent": 0.0,
+                },
+                {
+                    "id": "SA1",
+                    "name": "SANCHEZ ANA",
+                    "mobile": "",
+                    "active": False,
+                    "commission_percent": 0.0,
+                },
+            ],
+        )
+        self.assertEqual(set(sellers[0]), _SELLER_KEYS)
+
+    def test_list_sellers_merges_odoo_commission_phone_and_enabled(self):
+        """The bound user's phone, the binding commission and enabled come back."""
+        connector = self._make_connector()
+        self._refresh(connector, payloads_by_url={"*": self._seller_pack()})
+        self._bind_seller(connector, "DN", "5491155510001", 7.5)
+        self._bind_seller(connector, "SA1", "5491166660002", 3.0, enabled=False)
+        with _patch_httpx() as mock_post:
+            by_id = {row["id"]: row for row in connector._bejerman_list_sellers()}
+        mock_post.assert_not_called()
+        self.assertEqual(by_id["DN"]["commission_percent"], 7.5)
+        self.assertEqual(by_id["DN"]["mobile"], "5491155510001")
+        self.assertTrue(by_id["DN"]["active"])
+        # Bound but not enabled: inactive, yet its admin values are not lost.
+        self.assertEqual(by_id["SA1"]["commission_percent"], 3.0)
+        self.assertEqual(by_id["SA1"]["mobile"], "5491166660002")
+        self.assertFalse(by_id["SA1"]["active"])
+        self.assertEqual(by_id["DN"]["name"], "SYNTHETIC SELLER")
+
+    def test_import_round_trip_keeps_admin_values(self):
+        """A bound, enabled seller survives an import with commission and phone."""
+        connector = self._make_connector()
+        company = connector.company_id
+        company.collection_connector_id = connector
+        self._refresh(connector, payloads_by_url={"*": self._seller_pack()})
+        user = self._bind_seller(connector, "DN", "5491155510001", 7.5)
+        users_before = self.env["res.users"].search_count([])
+        bindings = self.env["collection.connector.seller.binding"]
+        with _patch_httpx() as mock_post:
+            company._sync_enabled_sellers_from_connector()
+        mock_post.assert_not_called()
+        binding = bindings.search([("connector_id", "=", connector.id)])
+        self.assertEqual(binding.mapped("external_seller_id"), ["DN"])
+        self.assertEqual(binding.commission_percent, 7.5)
+        self.assertEqual(binding.user_id, user)
+        self.assertEqual(user.partner_id.phone, "5491155510001")
+        self.assertEqual(company.enabled_seller_ids, user)
+        # Actual behaviour: the generic list drops inactive rows, so the not yet
+        # enabled seller SA1 gets neither a user nor a binding from this import.
+        self.assertEqual(self.env["res.users"].search_count([]), users_before)
+
+    def test_import_ignores_sellers_that_are_not_enabled(self):
+        """Inactive rows are dropped by the generic list: no user, no binding."""
+        connector = self._make_connector()
+        company = connector.company_id
+        company.collection_connector_id = connector
+        self._refresh(connector, payloads_by_url={"*": self._seller_pack()})
+        users_before = self.env["res.users"].search_count([])
+        self.assertEqual(connector.list_sellers()["sellers"], [])
+        company._sync_enabled_sellers_from_connector()
+        self.assertFalse(connector.seller_binding_ids)
+        self.assertFalse(company.enabled_seller_ids)
+        self.assertEqual(self.env["res.users"].search_count([]), users_before)
 
     def test_list_customers_seller_scope_cuit(self):
         """Only seller E's active customers; CUIT is XX-XXXXXXXX-X."""
@@ -850,24 +903,22 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         payloads = {
             _WS_URL: {
                 "clientes": _CLIENTES,
-                "sellers": _PREFIX_SELLERS,
                 "debts": _PREFIX_DEBT,
             }
         }
         self._refresh(connector, payloads_by_url=payloads)
-        with _patch_httpx(payloads_by_url=payloads):
-            sellers = connector._bejerman_list_sellers()
+        sellers = connector._bejerman_list_sellers()
         with _patch_today(connector):
             customers = connector._bejerman_list_customers("E")
             debt = connector._bejerman_get_customer_debt("E", "20123456789")
         blob = json.dumps({"sellers": sellers, "customers": customers, "debt": debt})
         self.assertNotIn(_QUERY_PREFIX, blob)
-        self.assertEqual(sellers[0]["id"], "E")
+        self.assertEqual(sellers[0]["id"], "DN")
         self.assertEqual(customers[0]["id"], "123")
         self.assertEqual(debt["invoices"][0]["id"], "FHK|00004|A|00000009")
 
     def test_company_a_does_not_read_company_b(self):
-        """Company A must not POST to B's URL or receive B's seller rows."""
+        """Company A must not POST to B's URL or list B's sellers."""
         connector_a = self._make_connector(name="Bejerman A")
         company_b = self._create_company("Bejerman Co B")
         connector_b = (
@@ -884,15 +935,22 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             )
         )
         payloads = {
-            _WS_URL: {
-                "clientes": _CLIENTES,
-                "sellers": _SELLER_ROWS,
-                "debts": _DEBT_ROWS,
-            },
+            _WS_URL: {"clientes": _CLIENTES, "debts": _DEBT_ROWS},
             _WS_URL_B: {
                 "clientes": [],
-                "sellers": _SELLER_ROWS_B,
-                "debts": [],
+                "debts": [
+                    _debt_row(
+                        "FHK",
+                        "1",
+                        "A",
+                        "1",
+                        "9",
+                        "2026-03-01",
+                        1,
+                        vendedor="B1",
+                        vendedor_nombre="COMPANY B SELLER",
+                    )
+                ],
             },
         }
         posted = []
@@ -912,24 +970,26 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             ".httpx.Client.post",
             side_effect=_post,
         ):
-            sellers_a = connector_a._bejerman_list_sellers()
+            connector_a._bejerman_refresh_snapshot()
             posted_after_a = list(posted)
+            connector_b._bejerman_refresh_snapshot()
+            sellers_a = connector_a._bejerman_list_sellers()
             sellers_b = connector_b._bejerman_list_sellers()
         self.assertTrue(posted_after_a)
         self.assertTrue(all(url == _WS_URL for url in posted_after_a))
         self.assertNotIn(_WS_URL_B, posted_after_a)
-        a_ids = {row["id"] for row in sellers_a}
-        b_ids = {row["id"] for row in sellers_b}
-        self.assertIn("E", a_ids)
-        self.assertNotIn("B", a_ids)
-        self.assertEqual(b_ids, {"B"})
-        self.assertNotIn("E", b_ids)
+        self.assertEqual({row["id"] for row in sellers_a}, {"DN"})
+        self.assertEqual({row["id"] for row in sellers_b}, {"B1"})
         self.assertIn(_WS_URL_B, posted)
+        # Listing is a snapshot read: no further request after the refreshes.
+        count = len(posted)
+        connector_a._bejerman_list_sellers()
+        self.assertEqual(len(posted), count)
 
     def test_admin_only_credentials_and_button(self):
         """Only Settings admins see masked credentials and Test Connection."""
         Connector = self.env["collection.connector"]
-        for name in _BEJERMAN_CONFIG_FIELDS:
+        for name in _BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS:
             field = Connector._fields[name]
             groups = {
                 part.strip() for part in (field.groups or "").split(",") if part.strip()
@@ -985,12 +1045,17 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         )
         admin_fields = Connector.with_user(system).fields_get()
         user_fields = Connector.with_user(internal).fields_get()
-        for name in _BEJERMAN_CONFIG_FIELDS:
+        for name in _BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS:
             self.assertIn(name, admin_fields)
             self.assertNotIn(name, user_fields)
 
         admin_arch = self._form_arch_for(system)
         user_arch = self._form_arch_for(internal)
+        for name in _UNUSED_SELLER_FIELDS:
+            self.assertFalse(
+                admin_arch.xpath(f"//field[@name='{name}']"),
+                f"the form must not show the unused {name}",
+            )
         admin_button = admin_arch.xpath(
             "//button[@name='test_connection'][contains(@invisible, 'bejerman')]"
         )
@@ -1030,9 +1095,8 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self.assertNotIn(_CLAVE, str(ctx.exception))
         self._assert_no_leak(str(ctx.exception))
 
-        with _patch_httpx(fail=("seller_view",)):
-            with self.assertRaises(UserError) as ctx:
-                connector.list_sellers()
+        with self.assertRaises(UserError) as ctx:
+            connector.list_sellers()
         self._assert_clean_user_error(ctx.exception)
 
         with _patch_httpx(fail=("debt_view",)):

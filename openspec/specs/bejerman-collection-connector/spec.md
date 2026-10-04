@@ -42,13 +42,13 @@ with no write.
 
 ### Requirement: Test Connection
 
-MUST close the session after the probe. Success requires Registro, ObtenerClientes, and
-the seller Query view. The debt view MUST NOT be downloaded by Test Connection; the
+MUST close the session after the probe. Success requires Registro and ObtenerClientes;
+there is no seller view. The debt view MUST NOT be downloaded by Test Connection; the
 snapshot refresh exercises it. Refusal MUST raise a generic admin `UserError`.
 
 #### Scenario: Cheap probe then close
 
-- GIVEN working TABLAS and seller Query view
+- GIVEN working TABLAS
 - WHEN Test Connection runs
 - THEN it MUST succeed, MUST NOT request the debt view, and MUST close the session
 
@@ -66,14 +66,21 @@ undecodable string MUST raise a transport error without quoting the payload.
 
 ### Requirement: Seller mapping
 
-Query keys MUST map by alias suffix; padded codes trimmed; inactive omitted.
-`commission_percent` MUST be 0–100; zero listable.
+Bejerman has no seller view. Sellers MUST come from every row of the debt view the
+snapshot refresh already downloads (`CVEVEN_COD` code, `VEN_DESC` name), mapped by alias
+suffix, codes trimmed, unique, blank codes skipped, ambiguous aliases fail closed. They
+MUST be stored in the same atomic swap as customers and debt, with no extra Bejerman
+request. `list_sellers` MUST read that snapshot (generic "not configured" error before
+the first refresh) and MUST NOT call Bejerman. Commission, phone and enabled state MUST
+be Odoo's (binding `commission_percent`, bound user's partner phone, company enabled
+sellers); a seller with no binding MUST be listed inactive with commission 0.
 
-#### Scenario: Seller suffix map
+#### Scenario: Seller list from the snapshot
 
-- GIVEN prefixed keys, padded codes, inactive seller, and zero commission
+- GIVEN a refreshed snapshot, one bound enabled seller and one unbound seller
 - WHEN `list_sellers` runs
-- THEN ids MUST be suffix-mapped and trimmed; inactive omitted; zero remains
+- THEN no Bejerman request MUST be made; the bound seller MUST carry Odoo's commission,
+  phone and active; the other MUST be inactive with commission 0
 
 ### Requirement: Seller-scoped customers
 

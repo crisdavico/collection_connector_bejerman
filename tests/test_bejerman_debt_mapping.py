@@ -22,15 +22,36 @@ class TestBejermanDebtMapping(TransactionCase):
         """All rows count (closed ones too); codes are trimmed; first name wins."""
         rows = [
             _debt_row(
-                "FHK", "1", "A", "1", "1", "2026-03-01", 10,
-                vendedor="DO ", vendedor_nombre="",
+                "FHK",
+                "1",
+                "A",
+                "1",
+                "1",
+                "2026-03-01",
+                10,
+                vendedor="DO ",
+                vendedor_nombre="",
             ),
             _debt_row(
-                "FHK", "1", "A", "2", "1", "2026-03-01", 0, vendedor="DO",
+                "FHK",
+                "1",
+                "A",
+                "2",
+                "1",
+                "2026-03-01",
+                0,
+                vendedor="DO",
                 vendedor_nombre="DOMENECH OSCAR",
             ),
             _debt_row(
-                "FHK", "1", "A", "3", "1", "2026-03-01", 0, vendedor="0SA1",
+                "FHK",
+                "1",
+                "A",
+                "3",
+                "1",
+                "2026-03-01",
+                0,
+                vendedor="0SA1",
                 vendedor_nombre="  SANCHEZ ANA ",
             ),
             _debt_row("FHK", "1", "A", "4", "1", "2026-03-01", 5, vendedor="  "),
@@ -47,13 +68,19 @@ class TestBejermanDebtMapping(TransactionCase):
     def test_debt_sellers_resolve_prefixed_keys_by_alias(self):
         """A generated key prefix never reaches the seller code or name."""
         row = _debt_row(
-            "FHK", "1", "A", "1", "1", "2026-03-01", 10, vendedor="DO",
-            vendedor_nombre="DOMENECH OSCAR", prefix="GENERATEDPREFIX_",
+            "FHK",
+            "1",
+            "A",
+            "1",
+            "1",
+            "2026-03-01",
+            10,
+            vendedor="DO",
+            vendedor_nombre="DOMENECH OSCAR",
+            prefix="GENERATEDPREFIX_",
         )
         sellers = self._mapping().map_debt_sellers([row])
-        self.assertEqual(
-            sellers, [{"seller_code": "DO", "name": "DOMENECH OSCAR"}]
-        )
+        self.assertEqual(sellers, [{"seller_code": "DO", "name": "DOMENECH OSCAR"}])
 
     def test_debt_sellers_fail_closed_on_ambiguous_or_missing_aliases(self):
         """Two keys for one alias skip the row; a missing name keeps the code."""
@@ -65,7 +92,9 @@ class TestBejermanDebtMapping(TransactionCase):
         ambiguous_name["OTHERVEN_DESC"] = "other"
         no_code = {k: v for k, v in good.items() if not k.endswith("CVEVEN_COD")}
         no_name = {k: v for k, v in good.items() if not k.endswith("VEN_DESC")}
-        no_name = {k: ("NN" if k.endswith("CVEVEN_COD") else v) for k, v in no_name.items()}
+        no_name = {
+            k: ("NN" if k.endswith("CVEVEN_COD") else v) for k, v in no_name.items()
+        }
         sellers = self._mapping().map_debt_sellers(
             [ambiguous_code, ambiguous_name, no_code, no_name]
         )
