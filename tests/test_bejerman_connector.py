@@ -757,7 +757,10 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         with _patch_httpx(fail=("ObtenerClientes",)) as mock_post:
             with self.assertRaises(UserError) as ctx:
                 connector._bejerman_test_connection()
-        self.assertEqual(str(ctx.exception), _NOT_CONFIGURED)
+        self.assertEqual(
+            str(ctx.exception),
+            "Connected to Bejerman, but the customer list could not be read.",
+        )
         self._assert_no_leak(str(ctx.exception))
         actions = [_call_soap_action(call) for call in mock_post.call_args_list]
         self.assertEqual(actions[0], _SOAPACTION_REGISTRO)
@@ -1023,7 +1026,8 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         with _patch_httpx(fail=("ObtenerClientes",)):
             with self.assertRaises(UserError) as ctx:
                 connector.test_connection()
-        self._assert_clean_user_error(ctx.exception)
+        self.assertNotIn(_CLAVE, str(ctx.exception))
+        self._assert_no_leak(str(ctx.exception))
 
         with _patch_httpx(fail=("seller_view",)):
             with self.assertRaises(UserError) as ctx:
@@ -1039,13 +1043,15 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         with _patch_httpx(fail=("Registro",)):
             with self.assertRaises(UserError) as ctx:
                 connector._bejerman_test_connection()
-        self._assert_clean_user_error(ctx.exception)
+        self.assertNotIn(_CLAVE, str(ctx.exception))
+        self._assert_no_leak(str(ctx.exception))
 
         bad_url = "http://erp.secret.example/leaky-ws"
         bad = self._make_connector(name="Bejerman Bad URL", bejerman_ws_url=bad_url)
         with self.assertRaises(UserError) as ctx:
             bad.test_connection()
-        self._assert_clean_user_error(ctx.exception, bad_url)
+        self.assertNotIn("leaky-ws", str(ctx.exception))
+        self._assert_no_leak(str(ctx.exception), bad_url)
 
         def _boom(_url, content=None, headers=None, **_kwargs):
             del content, headers
