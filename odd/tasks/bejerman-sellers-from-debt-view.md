@@ -124,19 +124,29 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
       user to `company.enabled_seller_ids`. Admin-only, Bejerman-only, no Bejerman call,
       inside this addon (route: delegated writer).
       Commit: `feat(collection_connector_bejerman): enable and disable sellers from the connector`
-      (hash recorded in the next docs commit). Manifest 19.0.1.3.0. UI: Collections >
+      Commit `145015d`. Manifest 19.0.1.3.0. UI: Collections >
       Configuration > Connectors > the Bejerman connector > Sellers tab > row button
       "Enable seller" (wizard) / "Disable seller". New user login is the generic
       `collection.<company id>.<code>`, via `_collection_create_connector_seller_users`.
       RED: `1 failed, 21 error(s) of 97 tests` (8 known + the 13 new tests).
       GREEN: `0 failed, 8 error(s) of 97 tests` (8 known only); with the throwaway-DB column
       shim `0 failed, 0 error(s) of 97 tests`.
-- [ ] T4 Live check on `devel`: upgrade, refresh, list sellers, enable one seller
-      (route: inline).
+- [x] T4 Live check on `devel`: upgrade, refresh, list sellers, enable one seller
+      (route: inline). 2026-10-04 on `devel`, connector 49737 (kras):
+      - `-u collection_connector_bejerman` clean, installed 19.0.1.3.0, Odoo restarted.
+      - Test Connection: OK (seller fields empty).
+      - Refresh: 46 sellers, 6,416 customers. The earlier probe's 47 most likely counted
+        a blank seller code, which `map_debt_sellers` skips (not separately verified).
+      - `list_sellers`: 46 rows, 0 active (no bindings yet), as designed.
+      - Enable `DO` (DOMENECH OSCAR) with a new user, phone and 3.5 % in one transaction:
+        binding created, enabled, `list_sellers` shows it active at 3.5 %, 319 customers
+        readable. Rolled back afterwards: 0 bindings left on devel.
+      - Spot check: module suite `0 failed, 8 error(s) of 97 tests` (8 known).
+      - Not click-tested in the browser: the Sellers tab and wizard UI.
 
 ## Acceptance criteria
 
-- Refresh makes exactly the same Bejerman calls as before and stores 47 sellers on devel.
+- Refresh makes exactly the same Bejerman calls as before and stores every non-blank seller code on devel (46).
 - `list_sellers` returns code/name from the snapshot with Odoo commission/phone/enabled;
   new sellers inactive with commission 0.
 - Re-import after the admin edits commission/phone/enabled keeps those values.
@@ -150,7 +160,10 @@ The debt view `Saldos al día/*` carries the voucher seller on every row (verifi
 - 2026-10-04: exploration done; design approved by user; document created.
 - 2026-10-04: T0-T3 done. Blocker found: generic import ignores inactive sellers, so new
   sellers cannot be onboarded. User approved T3b ("Enable seller" action).
+- 2026-10-04: T3b and T4 done. All tasks closed.
 
 ## Next step
 
-T3b.
+User decisions: click through the Sellers tab in the browser, enable the real sellers,
+push / PR of `feat/bejerman-sellers-from-debt-view`. Follow-up outside this addon: drop
+`bejerman_seller_scenario` / `bejerman_seller_view` from the `collection` settings wizard.
