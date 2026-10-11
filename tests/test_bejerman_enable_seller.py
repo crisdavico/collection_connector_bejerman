@@ -2,7 +2,9 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo.exceptions import AccessError, UserError
+from odoo.fields import Command
 from odoo.tests import TransactionCase
+from odoo.tools.safe_eval import safe_eval
 
 from .test_bejerman_connector import (
     _CLIENTES,
@@ -213,6 +215,81 @@ class TestBejermanEnableSeller(BejermanTestMixin, TransactionCase):
             self.seller_e.with_user(plain).action_bejerman_disable_seller()
         self.seller_e.with_user(manager).action_bejerman_disable_seller()
         self.assertFalse(self.seller_e.is_enabled)
+
+    def _outsider(self):
+        """An internal user of another company only."""
+        other = self._create_company("Enable Outside Co")
+        user = self._create_user("bejerman_outsider", "base.group_user")
+        user.write({"company_id": other.id, "company_ids": [Command.set(other.ids)]})
+        return user
+
+    def test_user_choices_are_limited_to_users_of_the_company(self):
+        """The picker offers internal users that already belong to the company."""
+        outsider = self._outsider()
+        member = self._internal_user("MEMBER", "5491100000055")
+        domain = self.env[_WIZARD]._fields["user_id"].domain
+        allowed = self.env["res.users"].search(
+            safe_eval(domain, {"company_id": self.company.id})
+        )
+        self.assertIn(member, allowed)
+        self.assertNotIn(outsider, allowed)
+        self.assertEqual(
+            self.env[_WIZARD]
+            .with_context(default_seller_id=self.seller_e.id)
+            .new({"seller_id": self.seller_e.id})
+            .company_id,
+            self.company,
+        )
+
+    def test_manager_cannot_grant_another_user_access_to_the_company(self):
+        """Enabling never adds the company to a user outside it, not even via RPC."""
+        manager = self._manager()
+        outsider = self._outsider()
+        companies_before = outsider.company_ids
+        with self.assertRaisesRegex(UserError, "administrator"):
+            self._enable(
+                self.seller_e,
+                as_user=manager,
+                user_mode="existing",
+                user_id=outsider.id,
+            )
+        self.assertEqual(outsider.company_ids, companies_before)
+        self.assertNotIn(self.company, outsider.company_ids)
+        self.assertFalse(self._binding("E"))
+        self.assertNotIn(outsider, self.company.enabled_seller_ids)
+
+    def test_manager_cannot_overwrite_another_users_phone(self):
+        """Changing a user's contact phone is an administrator's call."""
+        manager = self._manager()
+        user = self._internal_user("OLD", "5491100000099")
+        with self.assertRaisesRegex(UserError, "administrator"):
+            self._enable(
+                self.seller_e,
+                as_user=manager,
+                user_mode="existing",
+                user_id=user.id,
+                phone="5491155510001",
+            )
+        self.assertEqual(user.partner_id.phone, "5491100000099")
+        self.assertFalse(self._binding("E"))
+        self.assertNotIn(user, self.company.enabled_seller_ids)
+
+    def test_manager_enables_a_company_user_whose_phone_already_matches(self):
+        manager = self._manager()
+        user = self._internal_user("OLD", "5491155510001")
+        self._enable(
+            self.seller_e,
+            as_user=manager,
+            user_mode="existing",
+            user_id=user.id,
+            phone="+54 9 11 5551-0001",
+            commission_percent=2.5,
+        )
+        binding = self._binding("E")
+        self.assertEqual(binding.user_id, user)
+        self.assertEqual(binding.commission_percent, 2.5)
+        self.assertEqual(user.partner_id.phone, "5491155510001")
+        self.assertIn(user, self.company.enabled_seller_ids)
 
     def test_only_bejerman_connectors(self):
         other = self.env["collection.connector"].create({"name": "Typeless"})

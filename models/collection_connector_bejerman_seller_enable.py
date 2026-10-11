@@ -2,7 +2,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.fields import Command
 from odoo.tools.translate import _
 
@@ -26,15 +26,17 @@ class CollectionConnectorBejermanSellerEnable(models.TransientModel):
     )
     seller_code = fields.Char(related="seller_id.seller_code")
     seller_name = fields.Char(related="seller_id.name")
+    company_id = fields.Many2one(related="seller_id.company_id")
     user_mode = fields.Selection(
         selection=[("existing", "Existing user"), ("new", "Create new user")],
         default="new",
         required=True,
     )
+    # Only users already in the company: enabling never widens company access.
     user_id = fields.Many2one(
         comodel_name="res.users",
         string="User",
-        domain="[('share', '=', False)]",
+        domain="[('share', '=', False), ('company_ids', 'in', company_id)]",
     )
     new_user_name = fields.Char(string="New user name")
     phone = fields.Char(help="Seller WhatsApp number, written on the user's partner.")
@@ -109,7 +111,39 @@ class CollectionConnectorBejermanSellerEnable(models.TransientModel):
             raise UserError(_("Pick the user to enable."))
         if user.share:
             raise UserError(_("The seller must be an internal user."))
+        if company not in user.sudo().company_ids:
+            raise UserError(
+                _(
+                    "%(user)s does not belong to %(company)s. An administrator must "
+                    "give the user access to the company before it can be enabled.",
+                    user=user.display_name,
+                    company=company.display_name,
+                )
+            )
         return user
+
+    @api.private
+    def _write_seller_phone(self, user):
+        """Set the user's contact phone as the current user, never with sudo.
+
+        A matching phone is left alone. Another user's contact is usually not
+        the manager's to edit; the refusal names who can do it.
+        """
+        normalize = self.env["muk_mcp.mixin"]._collection_normalize_ar_mobile
+        partner = user.partner_id
+        if normalize(partner.phone) == normalize(self.phone):
+            return
+        try:
+            with self.env.cr.savepoint():
+                partner.write({"phone": self.phone.strip()})
+        except AccessError:
+            raise UserError(
+                _(
+                    "You cannot change the phone of %(user)s. An administrator must "
+                    "set it on the user's contact, then enable the seller again.",
+                    user=user.display_name,
+                )
+            ) from None
 
     def action_confirm(self):
         self.ensure_one()
@@ -139,20 +173,20 @@ class CollectionConnectorBejermanSellerEnable(models.TransientModel):
                         code=other.external_seller_id,
                     )
                 )
+            # First write: a refusal leaves no binding and no enabled seller.
+            self._write_seller_phone(user)
         else:
+            # A new seller identity is created in this company only, with the
+            # phone, as the import does.
             user = company._collection_create_connector_seller_users(
                 [
                     {
                         "external_seller_id": code,
                         "name": self.new_user_name.strip(),
-                        "mobile": self.phone,
+                        "mobile": self.phone.strip(),
                     }
                 ]
             )
-        # Elevation is limited to this one user and this company, as the import does.
-        if company not in user.sudo().company_ids:
-            user.sudo().write({"company_ids": [Command.link(company.id)]})
-        user.sudo().partner_id.write({"phone": self.phone.strip()})
         binding = Binding.search(
             [("connector_id", "=", connector.id), ("external_seller_id", "=", code)]
         )

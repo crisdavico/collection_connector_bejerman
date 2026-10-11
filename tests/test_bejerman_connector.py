@@ -1026,7 +1026,9 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             "clave must use the password widget",
         )
 
-        internal = self._create_user("bejerman_internal", "base.group_user")
+        internal = self._create_user(
+            "bejerman_internal", "collection.group_collection_user"
+        )
         system = self._create_user(
             "bejerman_system",
             "base.group_user",
