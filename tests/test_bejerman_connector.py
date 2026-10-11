@@ -14,6 +14,8 @@ from odoo.exceptions import AccessError, UserError
 from odoo.modules.module import load_manifest
 from odoo.tests import TransactionCase
 
+from odoo.addons.collection.tests.test_collection_payment import insert_company_like
+
 _SESSION_TOKEN = "SESSIONTOKENDEADBEEFCAFE"
 _CLAVE = "hunter2-bejerman-clave"
 _USUARIO = "ADMIN"
@@ -411,7 +413,38 @@ def _patch_today(connector, today=_TODAY):
 class BejermanTestMixin:
     """Shared connector builders for the Bejerman test cases."""
 
-    def _create_company(self, name):
+    def _partner_has_autopost_bills_column(self):
+        """`account`'s NOT NULL column may outlive its field in this registry."""
+        self.env.cr.execute(
+            """
+            SELECT 1
+              FROM information_schema.columns
+             WHERE table_name = 'res_partner'
+               AND column_name = 'autopost_bills'
+            """
+        )
+        return bool(self.env.cr.fetchone())
+
+    def _create_bare_partner(self, name, is_company=False):
+        """Create a partner whether or not `account` is in this database.
+
+        `account` is not a dependency. With it loaded, `autopost_bills` goes
+        through the ORM; when its column outlives the field, the row is
+        inserted by SQL; without the column, it is a plain ORM create.
+        """
+        Partner = self.env["res.partner"].with_context(
+            tracking_disable=True,
+            mail_create_nolog=True,
+            mail_notrack=True,
+            mail_create_nosubscribe=True,
+        )
+        email = f"{name}@example.com"
+        vals = {"name": name, "email": email, "is_company": is_company}
+        if "autopost_bills" in Partner._fields:
+            vals["autopost_bills"] = "ask"
+            return Partner.create(vals)
+        if not self._partner_has_autopost_bills_column():
+            return Partner.create(vals)
         self.env.cr.execute(
             """
             INSERT INTO res_partner (
@@ -419,38 +452,22 @@ class BejermanTestMixin:
                 autopost_bills, create_uid, write_uid, create_date, write_date
             )
             VALUES (
-                %s, %s, true, %s, 'contact', true, 'ask',
+                %s, %s, true, %s, 'contact', %s, 'ask',
                 1, 1,
                 (now() AT TIME ZONE 'UTC'),
                 (now() AT TIME ZONE 'UTC')
             )
             RETURNING id
             """,
-            (name, f"{name}@example.com", name),
+            (name, email, name, is_company),
         )
-        partner_id = self.env.cr.fetchone()[0]
-        self.env.cr.execute(
-            """
-            INSERT INTO res_company (
-                name, partner_id, currency_id,
-                fiscalyear_last_day, fiscalyear_last_month,
-                account_price_include, cost_method, horizon_days,
-                inventory_period, layout_background, security_lead
-            )
-            SELECT
-                %s, %s, currency_id,
-                fiscalyear_last_day, fiscalyear_last_month,
-                account_price_include, cost_method, horizon_days,
-                inventory_period, layout_background, security_lead
-            FROM res_company
-            WHERE id = %s
-            RETURNING id
-            """,
-            (name, partner_id, self.env.company.id),
-        )
-        company = self.env["res.company"].browse(self.env.cr.fetchone()[0])
-        company.invalidate_recordset()
-        return company
+        partner = Partner.browse(self.env.cr.fetchone()[0])
+        partner.invalidate_recordset()
+        return partner
+
+    def _create_company(self, name):
+        partner = self._create_bare_partner(name, is_company=True)
+        return insert_company_like(self.env, name, partner.id)
 
     def _bejerman_vals(self, **overrides):
         vals = {
@@ -497,36 +514,7 @@ class BejermanTestMixin:
         return etree.fromstring(result["arch"])
 
     def _create_user(self, login, *group_xmlids):
-        Partner = self.env["res.partner"].with_context(
-            tracking_disable=True,
-            mail_create_nolog=True,
-            mail_notrack=True,
-            mail_create_nosubscribe=True,
-        )
-        email = f"{login}@example.com"
-        partner_vals = {"name": login, "email": email}
-        if "autopost_bills" in Partner._fields:
-            partner_vals["autopost_bills"] = "ask"
-            partner = Partner.create(partner_vals)
-        else:
-            self.env.cr.execute(
-                """
-                INSERT INTO res_partner (
-                    name, email, active, complete_name, type,
-                    autopost_bills, create_uid, write_uid, create_date, write_date
-                )
-                VALUES (
-                    %s, %s, true, %s, 'contact', 'ask',
-                    1, 1,
-                    (now() AT TIME ZONE 'UTC'),
-                    (now() AT TIME ZONE 'UTC')
-                )
-                RETURNING id
-                """,
-                (login, email, login),
-            )
-            partner = Partner.browse(self.env.cr.fetchone()[0])
-            partner.invalidate_recordset()
+        partner = self._create_bare_partner(login)
         return (
             self.env["res.users"]
             .with_context(no_reset_password=True, tracking_disable=True)
@@ -534,7 +522,7 @@ class BejermanTestMixin:
                 {
                     "name": login,
                     "login": login,
-                    "email": email,
+                    "email": partner.email,
                     "partner_id": partner.id,
                     "group_ids": [
                         (6, 0, [self.env.ref(xmlid).id for xmlid in group_xmlids])
