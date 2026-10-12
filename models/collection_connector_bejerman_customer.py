@@ -30,6 +30,9 @@ class CollectionConnectorBejermanCustomer(models.Model):
     name = fields.Char()
     identification = fields.Char()
     seller_code = fields.Char()
+    # Open credit notes (negative balances) of this customer, as a positive
+    # amount: the customer total nets them (decision D4).
+    credit_total = fields.Float(digits=(16, 2))
 
     _connector_code_uniq = models.Constraint(
         "UNIQUE(connector_id, customer_code)",

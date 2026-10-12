@@ -430,11 +430,13 @@ class CollectionConnectorBejerman(models.Model):
                 customers = mapping.map_customer_rows(client.tablas.obtener_clientes())
                 debt_rows = client.queries.obtener_json_query_vista(scenario, view)
                 # Debt of disabled or unknown customers is not brought.
-                debts = mapping.map_open_debt(
-                    debt_rows,
-                    kinds,
-                    customer_codes={row["customer_code"] for row in customers},
-                )
+                codes = {row["customer_code"] for row in customers}
+                debts = mapping.map_open_debt(debt_rows, kinds, customer_codes=codes)
+                credits = mapping.map_customer_credits(debt_rows, customer_codes=codes)
+                customers = [
+                    dict(row, credit_total=credits.get(row["customer_code"], 0.0))
+                    for row in customers
+                ]
                 sellers = mapping.map_debt_sellers(debt_rows)
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
@@ -589,6 +591,23 @@ class CollectionConnectorBejerman(models.Model):
             self._bejerman_refresh_failed(exc, reason="storage")
 
     @api.private
+    def _collection_erp_reflected_since(self):
+        """Bejerman data includes ERP entries made before its read started.
+
+        The live filter path reads Bejerman at question time (now); the
+        snapshot reflects what Bejerman held when its last successful refresh
+        STARTED reading. A refresh that started before a sheet was marked
+        "Entered in the ERP" may predate the entry, so it releases nothing.
+        """
+        self.ensure_one()
+        if self.type != "bejerman":
+            return super()._collection_erp_reflected_since()
+        # Config flag read with sudo: it only picks the code path.
+        if self.sudo().bejerman_debt_filter_field:
+            return fields.Datetime.now()
+        return self.bejerman_snapshot_started_at or False
+
+    @api.private
     def _bejerman_require_snapshot(self):
         """Fail closed before the first refresh instead of downloading inline."""
         self.ensure_one()
@@ -693,6 +712,7 @@ class CollectionConnectorBejerman(models.Model):
         return {
             "customer": _customer_payload(customers),
             "invoices": [_invoice_payload(debt, today) for debt in debts],
+            "credit_total": customers.credit_total,
             "as_of": fields.Datetime.to_string(self.bejerman_snapshot_refreshed_at),
         }
 
@@ -721,14 +741,17 @@ class CollectionConnectorBejerman(models.Model):
                 mapping.debt_filter(field, mapping.erp_customer_code(row)),
             )
             today = self._bejerman_today()
+            code = customer["customer_code"]
             entries = mapping.map_open_debt(
                 rows,
                 self._bejerman_quotation_kinds(),
-                customer_code=customer["customer_code"],
+                customer_code=code,
             )
+            credits = mapping.map_customer_credits(rows, customer_code=code)
             return {
                 "customer": customer,
                 "invoices": [mapping.entry_to_invoice(e, today) for e in entries],
+                "credit_total": credits.get(code, 0.0),
                 # Read live: the figures are as of now.
                 "as_of": fields.Datetime.to_string(fields.Datetime.now()),
             }

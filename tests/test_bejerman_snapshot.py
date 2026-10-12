@@ -586,8 +586,9 @@ class TestBejermanSnapshotReads(BejermanTestMixin, TransactionCase):
         with _patch_httpx() as mock_post, _patch_today(self.connector):
             debt = self.connector._bejerman_get_customer_debt("E", "20-12345678-9")
         mock_post.assert_not_called()
-        # T25 added `as_of`: the snapshot time the figures come from.
-        self.assertEqual(set(debt), {"customer", "invoices", "as_of"})
+        # T25 added `as_of` (the snapshot time); T27 the open `credit_total`.
+        self.assertEqual(set(debt), {"customer", "invoices", "as_of", "credit_total"})
+        self.assertEqual(debt["credit_total"], 50.0)
         self.assertEqual(set(debt["customer"]), _CUSTOMER_KEYS)
         self.assertEqual(debt["customer"]["id"], "123")
         self.assertEqual(debt["customer"]["name"], "Acme SA")
@@ -607,7 +608,9 @@ class TestBejermanSnapshotReads(BejermanTestMixin, TransactionCase):
             },
         )
         formatted = self.connector._format_customer_debt(debt)
-        self.assertEqual(formatted["summary"]["total_balance"], 780.0)
+        # Decision D4: the 50 credit note nets the customer total (780 gross).
+        self.assertEqual(formatted["summary"]["total_balance"], 730.0)
+        self.assertEqual(formatted["summary"]["gross_total"], 780.0)
         self.assertEqual(formatted["summary"]["overdue_balance"], 200.0)
         self.assertEqual(formatted["summary"]["open_balance"], 580.0)
         self.assertEqual(formatted["summary"]["invoice_count"], 3)

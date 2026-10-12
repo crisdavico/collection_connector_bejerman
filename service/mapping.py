@@ -220,11 +220,11 @@ def _float(value: Any) -> float:
         return 0.0
 
 
-def _debt_row_entry(
+def _row_cells(
     row: Mapping[str, Any],
-    quotation_kinds: Any,
     cache: dict[tuple[Any, ...], dict[str, Any]],
-) -> dict[str, Any] | None:
+) -> Any:
+    """Cell reader for one debt row, or None when an alias is ambiguous."""
     shape = tuple(row)
     keys = cache.get(shape)
     if keys is None:
@@ -236,9 +236,11 @@ def _debt_row_entry(
         key = keys[name]
         return None if key is None else row.get(key)
 
-    balance = _float(cell("saldo"))
-    if balance <= 0:
-        return None
+    return cell
+
+
+def _voucher_identity(cell: Any) -> tuple[str, str, str, str, str] | None:
+    """(type, point, letter, number, customer code), or None when incomplete."""
     tipo = _text(cell("tipo"))
     punto = _text(cell("punto"))
     letra = _text(cell("letra"))
@@ -246,6 +248,24 @@ def _debt_row_entry(
     customer_code = trim_code(cell("cliente"))
     if not (tipo and numero and customer_code):
         return None
+    return tipo, punto, letra, numero, customer_code
+
+
+def _debt_row_entry(
+    row: Mapping[str, Any],
+    quotation_kinds: Any,
+    cache: dict[tuple[Any, ...], dict[str, Any]],
+) -> dict[str, Any] | None:
+    cell = _row_cells(row, cache)
+    if cell is None:
+        return None
+    balance = _float(cell("saldo"))
+    if balance <= 0:
+        return None
+    identity = _voucher_identity(cell)
+    if identity is None:
+        return None
+    tipo, punto, letra, numero, customer_code = identity
     human_number = "-".join(part for part in (punto, numero) if part)
     return {
         "external_invoice_id": "|".join((tipo, punto, letra, numero)),
@@ -296,6 +316,46 @@ def map_open_debt(
         seen.add(entry["external_invoice_id"])
         entries.append(entry)
     return entries
+
+
+def map_customer_credits(
+    payload: Any,
+    customer_code: Any = None,
+    customer_codes: Iterable[str] | None = None,
+) -> dict[str, float]:
+    """Open credit per customer code, as a positive amount (decision D4).
+
+    A row with a negative balance (a credit note, an advance) is money the
+    customer has in favour; the customer total subtracts it while the invoice
+    list stays as is. First id wins, and the customer filters work as in
+    ``map_open_debt``.
+    """
+    wanted = trim_code(customer_code) if customer_code is not None else None
+    allowed = None if customer_codes is None else frozenset(customer_codes)
+    cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+    totals: dict[str, float] = {}
+    seen: set[str] = set()
+    for row in as_rows(payload):
+        cell = _row_cells(row, cache)
+        if cell is None:
+            continue
+        balance = _float(cell("saldo"))
+        if balance >= 0:
+            continue
+        identity = _voucher_identity(cell)
+        if identity is None:
+            continue
+        tipo, punto, letra, numero, code = identity
+        if wanted is not None and code != wanted:
+            continue
+        if allowed is not None and code not in allowed:
+            continue
+        external_id = "|".join((tipo, punto, letra, numero))
+        if external_id in seen:
+            continue
+        seen.add(external_id)
+        totals[code] = totals.get(code, 0.0) - balance
+    return {code: round(total, 2) for code, total in totals.items()}
 
 
 def map_debt_sellers(payload: Any) -> list[dict[str, str]]:
