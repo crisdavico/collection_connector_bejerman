@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Mapping
 from datetime import date
 from typing import Any
@@ -95,11 +96,27 @@ def _date(value: Any) -> str:
     return text
 
 
-def _money(value: Any) -> float:
+def _amount(value: Any) -> float | None:
+    """A finite number, or None when the cell is blank or unreadable.
+
+    Never guesses: an unreadable amount must not become 0.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
     try:
-        return round(float(value or 0), 2)
+        number = float(value)
     except (TypeError, ValueError):
-        return 0.0
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _count_unparsable(stats: dict[str, int] | None) -> None:
+    if stats is not None:
+        stats["unparsable_amounts"] = stats.get("unparsable_amounts", 0) + 1
 
 
 def find_customer_row(
@@ -213,13 +230,6 @@ def _resolve_debt_keys(
     return resolved
 
 
-def _float(value: Any) -> float:
-    try:
-        return float(value or 0)
-    except (TypeError, ValueError):
-        return 0.0
-
-
 def _row_cells(
     row: Mapping[str, Any],
     cache: dict[tuple[Any, ...], dict[str, Any]],
@@ -251,19 +261,26 @@ def _voucher_identity(cell: Any) -> tuple[str, str, str, str, str] | None:
     return tipo, punto, letra, numero, customer_code
 
 
-def _debt_row_entry(
-    row: Mapping[str, Any],
+def _open_entry(
+    cell: Any,
+    identity: tuple[str, str, str, str, str],
     quotation_kinds: Any,
-    cache: dict[tuple[Any, ...], dict[str, Any]],
+    stats: dict[str, int] | None,
 ) -> dict[str, Any] | None:
-    cell = _row_cells(row, cache)
-    if cell is None:
+    """Open-debt entry of an identified row, or None.
+
+    A settled row (balance <= 0) is skipped without reading its amount. An
+    unreadable balance or amount skips the row and is counted in ``stats``.
+    """
+    balance = _amount(cell("saldo"))
+    if balance is None:
+        _count_unparsable(stats)
         return None
-    balance = _float(cell("saldo"))
     if balance <= 0:
         return None
-    identity = _voucher_identity(cell)
-    if identity is None:
+    amount = _amount(cell("importe"))
+    if amount is None:
+        _count_unparsable(stats)
         return None
     tipo, punto, letra, numero, customer_code = identity
     human_number = "-".join(part for part in (punto, numero) if part)
@@ -274,10 +291,25 @@ def _debt_row_entry(
         "seller_code": trim_code(cell("vendedor")),
         "issue_date": _date(cell("emision")),
         "due_date": _date(cell("vencimiento")),
-        "amount": _money(cell("importe")),
+        "amount": round(amount, 2),
         "balance": round(balance, 2),
         "document_kind": document_kind(tipo, quotation_kinds),
     }
+
+
+def _debt_row_entry(
+    row: Mapping[str, Any],
+    quotation_kinds: Any,
+    cache: dict[tuple[Any, ...], dict[str, Any]],
+    stats: dict[str, int] | None = None,
+) -> dict[str, Any] | None:
+    cell = _row_cells(row, cache)
+    if cell is None:
+        return None
+    identity = _voucher_identity(cell)
+    if identity is None:
+        return None
+    return _open_entry(cell, identity, quotation_kinds, stats)
 
 
 def map_debt_row(
@@ -292,11 +324,14 @@ def map_open_debt(
     quotation_kinds: Any = None,
     customer_code: Any = None,
     customer_codes: Iterable[str] | None = None,
+    stats: dict[str, int] | None = None,
 ) -> list[dict[str, Any]]:
     """Open entries (balance > 0); first id wins.
 
     ``customer_code`` keeps one customer, ``customer_codes`` keeps only those
-    normalized codes (the enabled customers being cached).
+    normalized codes (the enabled customers being cached). Rows of the kept
+    customers whose balance or amount cannot be read are skipped and counted
+    in ``stats["unparsable_amounts"]``.
     """
     wanted = trim_code(customer_code) if customer_code is not None else None
     allowed = None if customer_codes is None else frozenset(customer_codes)
@@ -304,12 +339,19 @@ def map_open_debt(
     entries: list[dict[str, Any]] = []
     seen: set[str] = set()
     for row in as_rows(payload):
-        entry = _debt_row_entry(row, quotation_kinds, cache)
+        cell = _row_cells(row, cache)
+        if cell is None:
+            continue
+        identity = _voucher_identity(cell)
+        if identity is None:
+            continue
+        code = identity[4]
+        if wanted is not None and code != wanted:
+            continue
+        if allowed is not None and code not in allowed:
+            continue
+        entry = _open_entry(cell, identity, quotation_kinds, stats)
         if entry is None:
-            continue
-        if wanted is not None and entry["customer_code"] != wanted:
-            continue
-        if allowed is not None and entry["customer_code"] not in allowed:
             continue
         if entry["external_invoice_id"] in seen:
             continue
@@ -339,8 +381,10 @@ def map_customer_credits(
         cell = _row_cells(row, cache)
         if cell is None:
             continue
-        balance = _float(cell("saldo"))
-        if balance >= 0:
+        # Unreadable balances are counted by the open-debt pass over the
+        # same rows; here they are simply not credits.
+        balance = _amount(cell("saldo"))
+        if balance is None or balance >= 0:
             continue
         identity = _voucher_identity(cell)
         if identity is None:
