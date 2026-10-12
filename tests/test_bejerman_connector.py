@@ -654,8 +654,9 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self.assertTrue(customers)
         self.assertEqual(set(customers[0]), _CUSTOMER_KEYS)
         self.assertNotIn("source", customers[0])
-        # T25 added `as_of`, the snapshot time (an Odoo UTC datetime string).
-        self.assertEqual(set(debt), {"customer", "invoices", "as_of"})
+        # T25 added `as_of`, the snapshot time (an Odoo UTC datetime string),
+        # and T27 the customer's open `credit_total`.
+        self.assertEqual(set(debt), {"customer", "invoices", "as_of", "credit_total"})
         self.assertNotIn("source", debt)
         self.assertEqual(set(debt["customer"]), _CUSTOMER_KEYS)
         self.assertTrue(debt["invoices"])
