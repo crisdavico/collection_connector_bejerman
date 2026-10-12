@@ -6,7 +6,15 @@ client: Registro, then Ejecutar, then Cierre even when Ejecutar fails. Reads nee
 There is no receipt write-back, no MCP, no menus, no sample ERP data, and no
 `post_init_hook`. Depends on `collection`. Requires the `httpx` Python extra.
 Credentials and Test Connection are Settings-only (`base.group_system`); clave is
-password-masked. Faults raise a generic `UserError` with no SOAP, Token, URL, user, or
+password-masked. Transient failures are retried up to 3 times with exponential backoff
+and jitter (an HTTP `Retry-After` is honoured, capped at 30 s): the read operations on
+connect errors, timeouts, dropped connections, HTTP 429 and 5xx; Registro only when
+the server cannot have processed it (connect errors, HTTP 429 and 503), so a lost
+answer never opens a second ERP session; CierreProceso never. One session (login,
+reads, retries and close) must finish within **Bejerman Deadline (s)** (default 900):
+each request's timeout is capped by the time left and every answer is read in chunks
+against it, so a slowly trickling download is aborted. The HTTP client is closed on
+every path, a failed login included. Faults raise a generic `UserError` with no SOAP, Token, URL, user, or
 clave. Customer listing and customer debt are seller-scoped and stay in this addon;
 `collection` does not call Bejerman.
 

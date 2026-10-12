@@ -124,6 +124,7 @@ _BEJERMAN_CONFIG_FIELDS = (
     "bejerman_puesto",
     "bejerman_sucursal",
     "bejerman_timeout",
+    "bejerman_deadline",
     "bejerman_allow_insecure",
     "bejerman_ca_bundle",
     "bejerman_debt_scenario",
@@ -1119,10 +1120,14 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
                 f"view={_SELLER_VIEW} SOAP {_DEBT_VIEW}"
             )
 
-        with patch(
-            "odoo.addons.collection_connector_bejerman.service.session"
-            ".httpx.Client.post",
-            side_effect=_boom,
+        with (
+            patch(
+                "odoo.addons.collection_connector_bejerman.service.session"
+                ".httpx.Client.post",
+                side_effect=_boom,
+            ),
+            # Connect errors are retried (T26); the test must not sleep.
+            patch("odoo.addons.collection_connector_bejerman.service.session._sleep"),
         ):
             with self.assertRaises(UserError) as ctx:
                 connector._bejerman_refresh_snapshot()

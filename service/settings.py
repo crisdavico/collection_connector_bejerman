@@ -72,9 +72,17 @@ class Settings:
     timeout: float = 60.0
     allow_insecure: bool = False
     ca_bundle: str = ""
+    # Wall-clock budget of one session (Registro to Cierre), retries included.
+    deadline: float = 900.0
+    # Attempts per request, the first one included.
+    max_attempts: int = 3
 
     def __post_init__(self) -> None:
         _validate_ws_url(self.ws_url, self.allow_insecure)
+        if not self.deadline or self.deadline <= 0:
+            raise BejermanConfigError("Deadline must be positive")
+        if self.max_attempts < 1:
+            raise BejermanConfigError("At least one attempt is required")
         self.ca_bundle = (self.ca_bundle or "").strip()
         if self.ca_bundle:
             path = Path(self.ca_bundle)
@@ -113,6 +121,8 @@ class Settings:
             timeout=self.timeout,
             allow_insecure=self.allow_insecure,
             ca_bundle="***" if self.ca_bundle else "",
+            deadline=self.deadline,
+            max_attempts=self.max_attempts,
         )
 
     def __str__(self) -> str:
