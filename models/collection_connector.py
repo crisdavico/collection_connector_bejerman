@@ -46,6 +46,7 @@ _SNAPSHOT_FIELDS = frozenset(
         "bejerman_snapshot_refreshed_at",
         "bejerman_snapshot_customer_count",
         "bejerman_snapshot_debt_count",
+        "bejerman_snapshot_skipped_count",
         "bejerman_last_failure_at",
         "bejerman_last_failure_reason",
         "bejerman_failure_count",
@@ -212,6 +213,13 @@ class CollectionConnectorBejerman(models.Model):
     )
     bejerman_snapshot_customer_count = fields.Integer(readonly=True, copy=False)
     bejerman_snapshot_debt_count = fields.Integer(readonly=True, copy=False)
+    bejerman_snapshot_skipped_count = fields.Integer(
+        string="Rows Skipped (unreadable amount)",
+        readonly=True,
+        copy=False,
+        help="Debt rows of the last refresh left out because their balance or "
+        "amount could not be read. They are never counted as zero.",
+    )
     bejerman_last_failure_at = fields.Datetime(
         string="Last Failure", readonly=True, copy=False
     )
@@ -422,6 +430,7 @@ class CollectionConnectorBejerman(models.Model):
         """
         self.ensure_one()
         started_at = fields.Datetime.now()
+        stats = {}
         kinds = self._bejerman_quotation_kinds()
         scenario = self.bejerman_debt_scenario or ""
         view = self.bejerman_debt_view or ""
@@ -431,7 +440,9 @@ class CollectionConnectorBejerman(models.Model):
                 debt_rows = client.queries.obtener_json_query_vista(scenario, view)
                 # Debt of disabled or unknown customers is not brought.
                 codes = {row["customer_code"] for row in customers}
-                debts = mapping.map_open_debt(debt_rows, kinds, customer_codes=codes)
+                debts = mapping.map_open_debt(
+                    debt_rows, kinds, customer_codes=codes, stats=stats
+                )
                 credits = mapping.map_customer_credits(debt_rows, customer_codes=codes)
                 customers = [
                     dict(row, credit_total=credits.get(row["customer_code"], 0.0))
@@ -440,9 +451,25 @@ class CollectionConnectorBejerman(models.Model):
                 sellers = mapping.map_debt_sellers(debt_rows)
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
-        self._bejerman_replace_snapshot(customers, debts, sellers, started_at)
+        skipped = self._bejerman_log_skipped_rows(stats)
+        self._bejerman_replace_snapshot(
+            customers, debts, sellers, started_at, skipped=skipped
+        )
         self._bejerman_clear_sync_notices()
         return True
+
+    @api.private
+    def _bejerman_log_skipped_rows(self, stats):
+        """Log (count only, no values) the rows skipped for an unreadable amount."""
+        skipped = stats.get("unparsable_amounts", 0)
+        if skipped:
+            _logger.warning(
+                "Bejerman debt of connector %s: %s rows skipped, their balance or "
+                "amount could not be read",
+                self.id,
+                skipped,
+            )
+        return skipped
 
     @api.model
     @api.private
@@ -562,7 +589,9 @@ class CollectionConnectorBejerman(models.Model):
         }
 
     @api.private
-    def _bejerman_replace_snapshot(self, customers, debts, sellers, started_at=None):
+    def _bejerman_replace_snapshot(
+        self, customers, debts, sellers, started_at=None, skipped=0
+    ):
         self.ensure_one()
         Customer = self.env["collection.connector.bejerman.customer"]
         Debt = self.env["collection.connector.bejerman.debt"]
@@ -584,6 +613,7 @@ class CollectionConnectorBejerman(models.Model):
                             "bejerman_snapshot_refreshed_at": now,
                             "bejerman_snapshot_customer_count": len(customers),
                             "bejerman_snapshot_debt_count": len(debts),
+                            "bejerman_snapshot_skipped_count": skipped,
                             "bejerman_failure_count": 0,
                         }
                     )
@@ -742,11 +772,14 @@ class CollectionConnectorBejerman(models.Model):
             )
             today = self._bejerman_today()
             code = customer["customer_code"]
+            stats = {}
             entries = mapping.map_open_debt(
                 rows,
                 self._bejerman_quotation_kinds(),
                 customer_code=code,
+                stats=stats,
             )
+            self._bejerman_log_skipped_rows(stats)
             credits = mapping.map_customer_credits(rows, customer_code=code)
             return {
                 "customer": customer,

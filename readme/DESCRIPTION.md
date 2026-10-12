@@ -33,7 +33,8 @@ with the generic "not configured" error rather than downloading inline.
 
 Sync status: the connector form's **Debt Sync** tab (collections managers and
 administrators) shows when the last successful refresh started and ended, the row
-counts, and the last scheduled failure with a generic reason class (connection,
+counts (including the rows skipped because their balance or amount could not be read:
+they are logged as a count, never stored as 0), and the last scheduled failure with a generic reason class (connection,
 timeout, ERP refusal, configuration, unreadable answer, storage) and the number of
 failures since the last success. Only a refresh writes these fields. When the cron
 fails, every collections manager of the connector's company gets one **Bejerman sync

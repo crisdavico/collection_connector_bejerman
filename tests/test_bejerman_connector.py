@@ -830,7 +830,9 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self._refresh(connector, payloads_by_url={"*": self._seller_pack()})
         users_before = self.env["res.users"].search_count([])
         self.assertEqual(connector.list_sellers()["sellers"], [])
-        company._sync_enabled_sellers_from_connector()
+        # T28: an empty answer is refused instead of being applied silently.
+        with self.assertRaises(UserError):
+            company._sync_enabled_sellers_from_connector()
         self.assertFalse(connector.seller_binding_ids)
         self.assertFalse(company.enabled_seller_ids)
         self.assertEqual(self.env["res.users"].search_count([]), users_before)
