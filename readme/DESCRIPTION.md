@@ -46,6 +46,13 @@ Add Debt picker and when an allocation snapshots its lines, instead of serving s
 figures. Every debt answer carries `as_of`: the snapshot's refresh time, or the read
 time on the live path, shown in the company timezone.
 
+Sheets entered in the ERP: receipts are typed into Bejerman by hand and a collections
+manager marks the closed sheet **Entered in the ERP** (`collection`). Its applied
+amounts keep being subtracted from the Bejerman balances until a refresh that
+**started** after the mark succeeded (the snapshot then shows the entry); a refresh
+that started earlier, even if it finished later, releases nothing. On the live path
+the ERP is read at question time, so marked sheets are no longer subtracted.
+
 Customer debt reads the snapshot: voucher type `PRE` (configurable through Bejerman
 Quotation Kinds, default `PRE`) is a `quotation`, every other type an `invoice`; the
 external id is the stable `type|point|letter|number` key; `state` is `overdue` when the

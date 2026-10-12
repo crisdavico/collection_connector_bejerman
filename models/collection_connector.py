@@ -591,6 +591,23 @@ class CollectionConnectorBejerman(models.Model):
             self._bejerman_refresh_failed(exc, reason="storage")
 
     @api.private
+    def _collection_erp_reflected_since(self):
+        """Bejerman data includes ERP entries made before its read started.
+
+        The live filter path reads Bejerman at question time (now); the
+        snapshot reflects what Bejerman held when its last successful refresh
+        STARTED reading. A refresh that started before a sheet was marked
+        "Entered in the ERP" may predate the entry, so it releases nothing.
+        """
+        self.ensure_one()
+        if self.type != "bejerman":
+            return super()._collection_erp_reflected_since()
+        # Config flag read with sudo: it only picks the code path.
+        if self.sudo().bejerman_debt_filter_field:
+            return fields.Datetime.now()
+        return self.bejerman_snapshot_started_at or False
+
+    @api.private
     def _bejerman_require_snapshot(self):
         """Fail closed before the first refresh instead of downloading inline."""
         self.ensure_one()
