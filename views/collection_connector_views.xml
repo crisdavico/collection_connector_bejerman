@@ -107,10 +107,7 @@
                     <group>
                         <group string="Last Refresh">
                             <field name="bejerman_snapshot_started_at" readonly="1" />
-                            <field
-                name="bejerman_snapshot_refreshed_at"
-                readonly="1"
-              />
+                            <field name="bejerman_snapshot_refreshed_at" readonly="1" />
                             <field name="bejerman_snapshot_debt_count" readonly="1" />
                             <field
                 name="bejerman_snapshot_customer_count"
@@ -125,10 +122,7 @@
                         <group string="Failures">
                             <field name="bejerman_failure_count" readonly="1" />
                             <field name="bejerman_last_failure_at" readonly="1" />
-                            <field
-                name="bejerman_last_failure_reason"
-                readonly="1"
-              />
+                            <field name="bejerman_last_failure_reason" readonly="1" />
                         </group>
                     </group>
                 </page>

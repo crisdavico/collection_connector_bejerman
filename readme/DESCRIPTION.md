@@ -2,67 +2,67 @@ Read-only Bejerman seller, customer, and debt source for Collections.
 
 Adds connector type `bejerman`. Each ERP read opens a SOAP session over a vendored httpx
 client: Registro, then Ejecutar, then Cierre even when Ejecutar fails. Reads need TABLAS
-`ObtenerClientes` plus the debt Queries view; missing grants fail closed.
-There is no receipt write-back, no MCP, no menus, no sample ERP data, and no
-`post_init_hook`. Depends on `collection`. Requires the `httpx` Python extra.
-Credentials and Test Connection are Settings-only (`base.group_system`); clave is
-password-masked. Transient failures are retried up to 3 times with exponential backoff
-and jitter (an HTTP `Retry-After` is honoured, capped at 30 s): the read operations on
-connect errors, timeouts, dropped connections, HTTP 429 and 5xx; Registro only when
-the server cannot have processed it (connect errors, HTTP 429 and 503), so a lost
-answer never opens a second ERP session; CierreProceso never. One session (login,
-reads, retries and close) must finish within **Bejerman Deadline (s)** (default 900):
-each request's timeout is capped by the time left and every answer is read in chunks
-against it, so a slowly trickling download is aborted. The HTTP client is closed on
-every path, a failed login included. Faults raise a generic `UserError` with no SOAP, Token, URL, user, or
-clave. Customer listing and customer debt are seller-scoped and stay in this addon;
+`ObtenerClientes` plus the debt Queries view; missing grants fail closed. There is no
+receipt write-back, no MCP, no menus, no sample ERP data, and no `post_init_hook`.
+Depends on `collection`. Requires the `httpx` Python extra. Credentials and Test
+Connection are Settings-only (`base.group_system`); clave is password-masked. Transient
+failures are retried up to 3 times with exponential backoff and jitter (an HTTP
+`Retry-After` is honoured, capped at 30 s): the read operations on connect errors,
+timeouts, dropped connections, HTTP 429 and 5xx; Registro only when the server cannot
+have processed it (connect errors, HTTP 429 and 503), so a lost answer never opens a
+second ERP session; CierreProceso never. One session (login, reads, retries and close)
+must finish within **Bejerman Deadline (s)** (default 900): each request's timeout is
+capped by the time left and every answer is read in chunks against it, so a slowly
+trickling download is aborted. The HTTP client is closed on every path, a failed login
+included. Faults raise a generic `UserError` with no SOAP, Token, URL, user, or clave.
+Customer listing and customer debt are seller-scoped and stay in this addon;
 `collection` does not call Bejerman.
 
 Debt snapshot: the debt view (`Saldos al día/*`, one row per sales voucher) is a ~200 MB
 download, so it is never read per question. A refresh downloads the customers and the
 debt view in one session, keeps as open debt only vouchers with a positive
-local-currency balance (`CVE_SALDOMONLOC > 0`; reconciled rows are dropped), stores
-each customer's open credit (the sum of its negative balances: credit notes,
-advances) on the customer row, and replaces the stored snapshot in one transaction (`collection.connector.bejerman.debt`,
-`collection.connector.bejerman.customer` and `collection.connector.bejerman.seller`).
-The sellers are the voucher sellers (`CVEVEN_COD` / `VEN_DESC`) of every debt view row,
-open or not, taken from that same download. A failed refresh keeps the previous snapshot.
-Refresh runs every 4 hours (`ir.cron`) and from the administrator-only **Refresh Debt**
-button. Before the first refresh, `list_customers` and `get_customer_debt` fail closed
-with the generic "not configured" error rather than downloading inline.
+local-currency balance (`CVE_SALDOMONLOC > 0`; reconciled rows are dropped), stores each
+customer's open credit (the sum of its negative balances: credit notes, advances) on the
+customer row, and replaces the stored snapshot in one transaction
+(`collection.connector.bejerman.debt`, `collection.connector.bejerman.customer` and
+`collection.connector.bejerman.seller`). The sellers are the voucher sellers
+(`CVEVEN_COD` / `VEN_DESC`) of every debt view row, open or not, taken from that same
+download. A failed refresh keeps the previous snapshot. Refresh runs every 4 hours
+(`ir.cron`) and from the administrator-only **Refresh Debt** button. Before the first
+refresh, `list_customers` and `get_customer_debt` fail closed with the generic "not
+configured" error rather than downloading inline.
 
 Sync status: the connector form's **Debt Sync** tab (collections managers and
-administrators) shows when the last successful refresh started and ended, the row
-counts (including the rows skipped because their balance or amount could not be read:
-they are logged as a count, never stored as 0), and the last scheduled failure with a generic reason class (connection,
-timeout, ERP refusal, configuration, unreadable answer, storage) and the number of
-failures since the last success. Only a refresh writes these fields. When the cron
-fails, every collections manager of the connector's company gets one **Bejerman sync
-failed** activity on the connector; further failures add none, and the next successful
-refresh removes it. The cron itself does not fail, so it is never deactivated. A
-failing manual **Refresh Debt** shows its error to the administrator instead. Debt read
-from a snapshot older than **Maximum Debt Age (hours)** (default 24, set by managers)
-is refused with a generic "out of date" error, in the agent's `customer_debt`, in the
-Add Debt picker and when an allocation snapshots its lines, instead of serving stale
-figures. Every debt answer carries `as_of`: the snapshot's refresh time, or the read
-time on the live path, shown in the company timezone.
+administrators) shows when the last successful refresh started and ended, the row counts
+(including the rows skipped because their balance or amount could not be read: they are
+logged as a count, never stored as 0), and the last scheduled failure with a generic
+reason class (connection, timeout, ERP refusal, configuration, unreadable answer,
+storage) and the number of failures since the last success. Only a refresh writes these
+fields. When the cron fails, every collections manager of the connector's company gets
+one **Bejerman sync failed** activity on the connector; further failures add none, and
+the next successful refresh removes it. The cron itself does not fail, so it is never
+deactivated. A failing manual **Refresh Debt** shows its error to the administrator
+instead. Debt read from a snapshot older than **Maximum Debt Age (hours)** (default 24,
+set by managers) is refused with a generic "out of date" error, in the agent's
+`customer_debt`, in the Add Debt picker and when an allocation snapshots its lines,
+instead of serving stale figures. Every debt answer carries `as_of`: the snapshot's
+refresh time, or the read time on the live path, shown in the company timezone.
 
 Sheets entered in the ERP: receipts are typed into Bejerman by hand and a collections
 manager marks the closed sheet **Entered in the ERP** (`collection`). Its applied
 amounts keep being subtracted from the Bejerman balances until a refresh that
-**started** after the mark succeeded (the snapshot then shows the entry); a refresh
-that started earlier, even if it finished later, releases nothing. On the live path
-the ERP is read at question time, so marked sheets are no longer subtracted.
+**started** after the mark succeeded (the snapshot then shows the entry); a refresh that
+started earlier, even if it finished later, releases nothing. On the live path the ERP
+is read at question time, so marked sheets are no longer subtracted.
 
 Customer debt reads the snapshot: voucher type `PRE` (configurable through Bejerman
 Quotation Kinds, default `PRE`) is a `quotation`, every other type an `invoice`; the
 external id is the stable `type|point|letter|number` key; `state` is `overdue` when the
 due date is before today in the company timezone, else `open`, computed at read time.
 Credit notes (decision D4): the invoice list is unchanged and allocations still target
-invoices, but the answer carries the customer's open `credit_total`, so the
-`collection` summary reports `gross_total` (open invoices), `credit_total` and
-`net_total` (what the customer owes, also `total_balance`): a 1000 invoice and a 300
-credit note give 700.
+invoices, but the answer carries the customer's open `credit_total`, so the `collection`
+summary reports `gross_total` (open invoices), `credit_total` and `net_total` (what the
+customer owes, also `total_balance`): a 1000 invoice and a 300 credit note give 700.
 Optionally, set Bejerman Debt Filter Field (for example `CVE_CODCLI`) once the ERP
 exposes a filterable child view: debt is then read live per customer instead of from the
 snapshot. Test Connection probes Registro and `ObtenerClientes`, then Cierre; the debt
@@ -70,25 +70,24 @@ view is exercised by the refresh.
 
 Sellers: Bejerman has no seller view, so `list_sellers` reads the seller snapshot and
 makes no Bejerman call (before the first refresh it fails closed like the customer
-reads). Bejerman supplies only the code and name; Odoo keeps the rest and
-`list_sellers` merges it back so an import never overwrites the administrator's values:
-commission is the seller binding's `commission_percent`, the phone is the bound user's
-partner phone, and `active` means the bound user is in the company's enabled sellers.
-A seller without a binding is listed inactive, commission 0, no phone. The generic
-`collection` list drops inactive rows, so only bound and enabled sellers reach the
-import. The Bejerman Seller Scenario and View fields are unused and hidden. On the
-connector form, the commission of a seller binding is editable only for Bejerman
-connectors (collections managers and administrators already hold write access on the
-binding); the next import keeps it.
+reads). Bejerman supplies only the code and name; Odoo keeps the rest and `list_sellers`
+merges it back so an import never overwrites the administrator's values: commission is
+the seller binding's `commission_percent`, the phone is the bound user's partner phone,
+and `active` means the bound user is in the company's enabled sellers. A seller without
+a binding is listed inactive, commission 0, no phone. The generic `collection` list
+drops inactive rows, so only bound and enabled sellers reach the import. The Bejerman
+Seller Scenario and View fields are unused and hidden. On the connector form, the
+commission of a seller binding is editable only for Bejerman connectors (collections
+managers and administrators already hold write access on the binding); the next import
+keeps it.
 
-Enabling a seller: because the generic import only lists sellers that are already
-bound and enabled, a new seller is enabled from the connector form, **Sellers** tab
-(the seller snapshot with its Odoo user, commission and enabled state). The row
-button **Enable seller** opens a wizard: pick an existing internal user or create one
-(login `collection.<company id>.<code>`, name prefilled from Bejerman), then set the
-phone and commission. Confirming creates or updates the binding, writes the phone on
-the user's partner and adds the user to the company's enabled sellers, with no
-Bejerman call and no import. A user already bound to another code, or a phone used by
-another enabled seller, is refused. **Disable seller** removes the user from the
-enabled sellers and keeps the binding. Administrators and collections managers only,
-Bejerman connectors only.
+Enabling a seller: because the generic import only lists sellers that are already bound
+and enabled, a new seller is enabled from the connector form, **Sellers** tab (the
+seller snapshot with its Odoo user, commission and enabled state). The row button
+**Enable seller** opens a wizard: pick an existing internal user or create one (login
+`collection.<company id>.<code>`, name prefilled from Bejerman), then set the phone and
+commission. Confirming creates or updates the binding, writes the phone on the user's
+partner and adds the user to the company's enabled sellers, with no Bejerman call and no
+import. A user already bound to another code, or a phone used by another enabled seller,
+is refused. **Disable seller** removes the user from the enabled sellers and keeps the
+binding. Administrators and collections managers only, Bejerman connectors only.
