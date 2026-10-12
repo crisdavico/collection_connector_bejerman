@@ -19,9 +19,23 @@ stored snapshot in one transaction (`collection.connector.bejerman.debt`,
 The sellers are the voucher sellers (`CVEVEN_COD` / `VEN_DESC`) of every debt view row,
 open or not, taken from that same download. A failed refresh keeps the previous snapshot.
 Refresh runs every 4 hours (`ir.cron`) and from the administrator-only **Refresh Debt**
-button; the connector form shows the last refresh time and row counts. Before the first
-refresh, `list_customers` and `get_customer_debt` fail closed with the generic "not
-configured" error rather than downloading inline.
+button. Before the first refresh, `list_customers` and `get_customer_debt` fail closed
+with the generic "not configured" error rather than downloading inline.
+
+Sync status: the connector form's **Debt Sync** tab (collections managers and
+administrators) shows when the last successful refresh started and ended, the row
+counts, and the last scheduled failure with a generic reason class (connection,
+timeout, ERP refusal, configuration, unreadable answer, storage) and the number of
+failures since the last success. Only a refresh writes these fields. When the cron
+fails, every collections manager of the connector's company gets one **Bejerman sync
+failed** activity on the connector; further failures add none, and the next successful
+refresh removes it. The cron itself does not fail, so it is never deactivated. A
+failing manual **Refresh Debt** shows its error to the administrator instead. Debt read
+from a snapshot older than **Maximum Debt Age (hours)** (default 24, set by managers)
+is refused with a generic "out of date" error, in the agent's `customer_debt`, in the
+Add Debt picker and when an allocation snapshots its lines, instead of serving stale
+figures. Every debt answer carries `as_of`: the snapshot's refresh time, or the read
+time on the live path, shown in the company timezone.
 
 Customer debt reads the snapshot: voucher type `PRE` (configurable through Bejerman
 Quotation Kinds, default `PRE`) is a `quotation`, every other type an `invoice`; the

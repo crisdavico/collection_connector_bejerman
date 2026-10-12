@@ -2,13 +2,22 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 import logging
+from datetime import timedelta
 from urllib.parse import urlparse
 
 import pytz
+from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.translate import _
+
+from odoo.addons.collection.models.collection_common import (
+    COLLECTION_MANAGER_GROUP,
+    ConnectorDataStaleError,
+    is_privileged,
+    privileged,
+)
 
 from ..service import mapping
 from ..service.errors import (
@@ -22,6 +31,34 @@ from ..service.settings import Credentials, Settings
 _logger = logging.getLogger(__name__)
 
 DEFAULT_QUOTATION_KINDS = "PRE"
+DEFAULT_SNAPSHOT_MAX_AGE_HOURS = 24
+SYNC_FAILED_ACTIVITY = (
+    "collection_connector_bejerman.mail_activity_type_bejerman_sync_failed"
+)
+# Snapshot bookkeeping is written only by the refresh itself, so nobody can make
+# a stale snapshot look fresh (or hide a failure) with a plain write.
+SNAPSHOT_SCOPE = "collection_connector_bejerman_snapshot"
+_SNAPSHOT_FIELDS = frozenset(
+    {
+        "bejerman_snapshot_started_at",
+        "bejerman_snapshot_refreshed_at",
+        "bejerman_snapshot_customer_count",
+        "bejerman_snapshot_debt_count",
+        "bejerman_last_failure_at",
+        "bejerman_last_failure_reason",
+        "bejerman_failure_count",
+    }
+)
+# Generic failure classes: what an operator can act on, never the ERP's text.
+FAILURE_REASONS = [
+    ("connection", "Could not reach the Bejerman server"),
+    ("timeout", "The Bejerman server took too long"),
+    ("erp", "Bejerman refused the request"),
+    ("configuration", "The connector is not configured"),
+    ("data", "The Bejerman answer could not be read"),
+    ("storage", "The snapshot could not be stored"),
+    ("other", "Unexpected error"),
+]
 # Settings the SOAP session cannot start without (the branch is optional).
 _REQUIRED_SETTINGS = (
     "bejerman_ws_url",
@@ -58,8 +95,29 @@ def _invoice_payload(debt, today):
     }
 
 
+def failure_reason(exc):
+    """Generic failure class of a refresh exception (never its text)."""
+    reason = getattr(exc, "bejerman_reason", None)
+    if reason:
+        return reason
+    if isinstance(exc, BejermanTransportError):
+        if type(exc).__name__ == "BejermanDeadlineError":
+            return "timeout"
+        return "connection"
+    if isinstance(exc, BejermanConfigError):
+        return "configuration"
+    if isinstance(exc, BejermanError):
+        return "erp"
+    if isinstance(exc, (TypeError, ValueError)):
+        return "data"
+    if isinstance(exc, UserError):
+        return "configuration"
+    return "other"
+
+
 class CollectionConnectorBejerman(models.Model):
-    _inherit = "collection.connector"
+    _name = "collection.connector"
+    _inherit = ["collection.connector", "mail.thread", "mail.activity.mixin"]
 
     type = fields.Selection(
         selection_add=[("bejerman", "Bejerman")],
@@ -126,7 +184,7 @@ class CollectionConnectorBejerman(models.Model):
         groups="base.group_system",
     )
     # Snapshot bookkeeping is not sensitive and must stay readable by internal
-    # users: the read path checks `bejerman_snapshot_refreshed_at` for emptiness.
+    # users: the read path checks `bejerman_snapshot_refreshed_at` for its age.
     bejerman_seller_ids = fields.One2many(
         comodel_name="collection.connector.bejerman.seller",
         inverse_name="connector_id",
@@ -134,9 +192,64 @@ class CollectionConnectorBejerman(models.Model):
         readonly=True,
         copy=False,
     )
-    bejerman_snapshot_refreshed_at = fields.Datetime(readonly=True, copy=False)
+    bejerman_snapshot_started_at = fields.Datetime(
+        string="Last Refresh Started",
+        readonly=True,
+        copy=False,
+        help="When the last successful refresh started reading Bejerman.",
+    )
+    bejerman_snapshot_refreshed_at = fields.Datetime(
+        string="Last Refresh", readonly=True, copy=False
+    )
     bejerman_snapshot_customer_count = fields.Integer(readonly=True, copy=False)
     bejerman_snapshot_debt_count = fields.Integer(readonly=True, copy=False)
+    bejerman_last_failure_at = fields.Datetime(
+        string="Last Failure", readonly=True, copy=False
+    )
+    bejerman_last_failure_reason = fields.Selection(
+        selection=FAILURE_REASONS,
+        string="Last Failure Reason",
+        readonly=True,
+        copy=False,
+    )
+    bejerman_failure_count = fields.Integer(
+        string="Failures Since Last Refresh",
+        readonly=True,
+        copy=False,
+        help="Scheduled refreshes that failed since the last successful one.",
+    )
+    bejerman_snapshot_max_age_hours = fields.Integer(
+        string="Maximum Debt Age (hours)",
+        default=DEFAULT_SNAPSHOT_MAX_AGE_HOURS,
+        help="Debt read from a snapshot older than this is refused to sellers "
+        "and operators instead of being shown.",
+    )
+
+    @api.constrains("bejerman_snapshot_max_age_hours")
+    def _check_bejerman_snapshot_max_age_hours(self):
+        for connector in self:
+            if connector.bejerman_snapshot_max_age_hours < 1:
+                raise ValidationError(
+                    _("The maximum debt age must be at least one hour.")
+                )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not is_privileged(SNAPSHOT_SCOPE) and any(
+            _SNAPSHOT_FIELDS & set(vals) for vals in vals_list
+        ):
+            self._bejerman_raise_snapshot_status_locked()
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if _SNAPSHOT_FIELDS & set(vals) and not is_privileged(SNAPSHOT_SCOPE):
+            self._bejerman_raise_snapshot_status_locked()
+        return super().write(vals)
+
+    @api.model
+    @api.private
+    def _bejerman_raise_snapshot_status_locked(self):
+        raise UserError(_("The Bejerman snapshot status is only updated by a refresh."))
 
     @api.private
     def _bejerman_quotation_kinds(self):
@@ -268,19 +381,24 @@ class CollectionConnectorBejerman(models.Model):
         return True
 
     @api.private
-    def _bejerman_refresh_failed(self, exc):
-        """Log the failure class only (never its text) and raise a generic error."""
+    def _bejerman_refresh_failed(self, exc, reason=None):
+        """Log the failure class only (never its text) and raise a generic error.
+
+        The raised error carries the generic reason class for the cron's record.
+        """
         _logger.warning(
             "Bejerman debt snapshot refresh failed for connector %s: %s",
             self.id,
             type(exc).__name__,
         )
-        raise UserError(
+        error = UserError(
             _(
                 "The Bejerman debt snapshot could not be refreshed. "
                 "The previous snapshot was kept."
             )
-        ) from None
+        )
+        error.bejerman_reason = reason or failure_reason(exc)
+        raise error from None
 
     @api.private
     def _bejerman_refresh_snapshot(self):
@@ -293,6 +411,7 @@ class CollectionConnectorBejerman(models.Model):
         previous snapshot.
         """
         self.ensure_one()
+        started_at = fields.Datetime.now()
         kinds = self._bejerman_quotation_kinds()
         scenario = self.bejerman_debt_scenario or ""
         view = self.bejerman_debt_view or ""
@@ -309,13 +428,20 @@ class CollectionConnectorBejerman(models.Model):
                 sellers = mapping.map_debt_sellers(debt_rows)
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
-        self._bejerman_replace_snapshot(customers, debts, sellers)
+        self._bejerman_replace_snapshot(customers, debts, sellers, started_at)
+        self._bejerman_clear_sync_notices()
         return True
 
     @api.model
     @api.private
     def _bejerman_cron_refresh_snapshot(self):
-        """Refresh every active Bejerman connector; one failure stops no other."""
+        """Refresh every active Bejerman connector; one failure stops no other.
+
+        A failure is recorded on its connector (time and generic reason) and the
+        company's Collections Managers get one notice until the next success.
+        The cron itself does not fail: that would roll the record back and,
+        after repeated failures, deactivate the cron.
+        """
         for connector in self.search([("type", "=", "bejerman")]):
             try:
                 with self.env.cr.savepoint():
@@ -326,6 +452,77 @@ class CollectionConnectorBejerman(models.Model):
                     connector.id,
                     type(exc).__name__,
                 )
+                connector._bejerman_record_sync_failure(failure_reason(exc))
+
+    @api.private
+    def _bejerman_record_sync_failure(self, reason):
+        """Store the failure and notify the managers once per outage."""
+        self.ensure_one()
+        with privileged(SNAPSHOT_SCOPE):
+            self.write(
+                {
+                    "bejerman_last_failure_at": fields.Datetime.now(),
+                    "bejerman_last_failure_reason": reason,
+                    "bejerman_failure_count": self.bejerman_failure_count + 1,
+                }
+            )
+        self._bejerman_notify_sync_failure(reason)
+
+    @api.private
+    def _bejerman_sync_managers(self):
+        """Internal Collections Managers of the connector's company."""
+        self.ensure_one()
+        group = self.env.ref(COLLECTION_MANAGER_GROUP).sudo()
+        return group.all_user_ids.filtered(
+            lambda user: not user.share and self.company_id in user.company_ids
+        )
+
+    @api.private
+    def _bejerman_sync_notices(self):
+        """Open outage notices on this connector."""
+        self.ensure_one()
+        activity_type = self.env.ref(SYNC_FAILED_ACTIVITY, raise_if_not_found=False)
+        if not activity_type:
+            return self.env["mail.activity"]
+        return self.sudo().activity_ids.filtered(
+            lambda activity: activity.activity_type_id == activity_type
+        )
+
+    @api.private
+    def _bejerman_notify_sync_failure(self, reason):
+        """One open notice per manager until the next successful refresh."""
+        self.ensure_one()
+        if self._bejerman_sync_notices():
+            return
+        managers = self._bejerman_sync_managers()
+        if not managers:
+            _logger.warning(
+                "Bejerman sync failed for connector %s and no manager can be told",
+                self.id,
+            )
+            return
+        reason_field = self._fields["bejerman_last_failure_reason"]
+        labels = dict(reason_field._description_selection(self.env))
+        note = Markup("<p>%s</p>") % _(
+            "The Bejerman debt snapshot of %(connector)s could not be refreshed "
+            "(%(reason)s). Debt older than %(hours)s hours is refused to sellers "
+            "and operators. Check the connector settings and the Bejerman "
+            "server, then use Refresh Debt.",
+            connector=self.name,
+            reason=labels.get(reason, reason),
+            hours=self.bejerman_snapshot_max_age_hours,
+        )
+        connector = self.sudo()
+        for manager in managers:
+            connector.activity_schedule(
+                SYNC_FAILED_ACTIVITY, note=note, user_id=manager.id
+            )
+
+    @api.private
+    def _bejerman_clear_sync_notices(self):
+        """A successful refresh closes the outage notice."""
+        self.ensure_one()
+        self._bejerman_sync_notices().unlink()
 
     def action_bejerman_refresh_snapshot(self):
         """Admin button: refresh this connector's debt snapshot now."""
@@ -353,7 +550,7 @@ class CollectionConnectorBejerman(models.Model):
         }
 
     @api.private
-    def _bejerman_replace_snapshot(self, customers, debts, sellers):
+    def _bejerman_replace_snapshot(self, customers, debts, sellers, started_at=None):
         self.ensure_one()
         Customer = self.env["collection.connector.bejerman.customer"]
         Debt = self.env["collection.connector.bejerman.debt"]
@@ -367,15 +564,19 @@ class CollectionConnectorBejerman(models.Model):
                 Customer.create([dict(row, connector_id=self.id) for row in customers])
                 Debt.create([dict(row, connector_id=self.id) for row in debts])
                 Seller.create([dict(row, connector_id=self.id) for row in sellers])
-                self.write(
-                    {
-                        "bejerman_snapshot_refreshed_at": fields.Datetime.now(),
-                        "bejerman_snapshot_customer_count": len(customers),
-                        "bejerman_snapshot_debt_count": len(debts),
-                    }
-                )
+                now = fields.Datetime.now()
+                with privileged(SNAPSHOT_SCOPE):
+                    self.write(
+                        {
+                            "bejerman_snapshot_started_at": started_at or now,
+                            "bejerman_snapshot_refreshed_at": now,
+                            "bejerman_snapshot_customer_count": len(customers),
+                            "bejerman_snapshot_debt_count": len(debts),
+                            "bejerman_failure_count": 0,
+                        }
+                    )
         except Exception as exc:
-            self._bejerman_refresh_failed(exc)
+            self._bejerman_refresh_failed(exc, reason="storage")
 
     @api.private
     def _bejerman_require_snapshot(self):
@@ -383,6 +584,23 @@ class CollectionConnectorBejerman(models.Model):
         self.ensure_one()
         if not self.bejerman_snapshot_refreshed_at:
             self._bejerman_misconfigured()
+
+    @api.private
+    def _bejerman_require_fresh_snapshot(self):
+        """Refuse debt from a snapshot older than the connector's threshold."""
+        self.ensure_one()
+        self._bejerman_require_snapshot()
+        hours = self.bejerman_snapshot_max_age_hours or DEFAULT_SNAPSHOT_MAX_AGE_HOURS
+        age = fields.Datetime.now() - self.bejerman_snapshot_refreshed_at
+        if age > timedelta(hours=hours):
+            raise ConnectorDataStaleError(
+                _(
+                    "The customer debt is out of date: the last Bejerman update "
+                    "is older than %(hours)s hours. Ask a collections manager to "
+                    "check the Bejerman connection.",
+                    hours=hours,
+                )
+            )
 
     @api.private
     def _bejerman_list_sellers(self):
@@ -440,7 +658,7 @@ class CollectionConnectorBejerman(models.Model):
             return self.sudo()._bejerman_live_customer_debt(
                 external_seller_id, customer_identification
             )
-        self._bejerman_require_snapshot()
+        self._bejerman_require_fresh_snapshot()
         customers = self.env["collection.connector.bejerman.customer"].search(
             [
                 ("connector_id", "=", self.id),
@@ -465,6 +683,7 @@ class CollectionConnectorBejerman(models.Model):
         return {
             "customer": _customer_payload(customers),
             "invoices": [_invoice_payload(debt, today) for debt in debts],
+            "as_of": fields.Datetime.to_string(self.bejerman_snapshot_refreshed_at),
         }
 
     @api.private
@@ -500,6 +719,8 @@ class CollectionConnectorBejerman(models.Model):
             return {
                 "customer": customer,
                 "invoices": [mapping.entry_to_invoice(e, today) for e in entries],
+                # Read live: the figures are as of now.
+                "as_of": fields.Datetime.to_string(fields.Datetime.now()),
             }
 
         return self._bejerman_call(_get_debt)

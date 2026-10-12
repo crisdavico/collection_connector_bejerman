@@ -7,7 +7,7 @@
     "summary": "Read-only Bejerman seller, customer, and debt source for Collections",
     "author": "Seedian",
     "website": "https://seedian.ai",
-    "depends": ["collection"],
+    "depends": ["collection", "mail"],
     "external_dependencies": {
         "python": ["httpx"],
     },
@@ -17,6 +17,7 @@
         "views/collection_connector_bejerman_seller_enable_views.xml",
         "views/collection_connector_views.xml",
         "data/ir_cron.xml",
+        "data/mail_activity_type_data.xml",
     ],
     "installable": True,
     "application": False,

@@ -586,7 +586,8 @@ class TestBejermanSnapshotReads(BejermanTestMixin, TransactionCase):
         with _patch_httpx() as mock_post, _patch_today(self.connector):
             debt = self.connector._bejerman_get_customer_debt("E", "20-12345678-9")
         mock_post.assert_not_called()
-        self.assertEqual(set(debt), {"customer", "invoices"})
+        # T25 added `as_of`: the snapshot time the figures come from.
+        self.assertEqual(set(debt), {"customer", "invoices", "as_of"})
         self.assertEqual(set(debt["customer"]), _CUSTOMER_KEYS)
         self.assertEqual(debt["customer"]["id"], "123")
         self.assertEqual(debt["customer"]["name"], "Acme SA")

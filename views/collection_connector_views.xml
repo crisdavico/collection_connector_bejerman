@@ -91,24 +91,41 @@
           invisible="type != 'bejerman'"
           groups="base.group_system"
         />
-                <field
-          name="bejerman_snapshot_refreshed_at"
-          readonly="1"
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page
+          string="Debt Sync"
+          name="bejerman_sync"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
-        />
-                <field
-          name="bejerman_snapshot_debt_count"
-          readonly="1"
-          invisible="type != 'bejerman'"
-          groups="base.group_system"
-        />
-                <field
-          name="bejerman_snapshot_customer_count"
-          readonly="1"
-          invisible="type != 'bejerman'"
-          groups="base.group_system"
-        />
+          groups="collection.group_collection_manager,base.group_system"
+        >
+                    <group>
+                        <group string="Last Refresh">
+                            <field name="bejerman_snapshot_started_at" readonly="1" />
+                            <field
+                name="bejerman_snapshot_refreshed_at"
+                readonly="1"
+              />
+                            <field name="bejerman_snapshot_debt_count" readonly="1" />
+                            <field
+                name="bejerman_snapshot_customer_count"
+                readonly="1"
+              />
+                            <field name="bejerman_snapshot_max_age_hours" />
+                        </group>
+                        <group string="Failures">
+                            <field name="bejerman_failure_count" readonly="1" />
+                            <field name="bejerman_last_failure_at" readonly="1" />
+                            <field
+                name="bejerman_last_failure_reason"
+                readonly="1"
+              />
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            <xpath expr="//sheet" position="after">
+                <chatter />
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page
