@@ -97,7 +97,12 @@ lookup; omit other-seller and inactive.
 
 Real `Saldos al día` rows (one per sales voucher, keys `<generated prefix><alias>`) MUST
 map by exact alias suffix; an alias matching more than one key MUST drop the row. Only
-rows with `CVE_SALDOMONLOC` > 0 are open; zero and negative rows MUST be dropped.
+rows with `CVE_SALDOMONLOC` > 0 are open; zero and negative rows MUST be dropped from the
+open debt, and each customer's negative balances (credit notes, advances; same customer
+filters, first id wins) MUST be summed, as a positive amount, into its `credit_total`
+(decision D4). A row whose balance or amount cannot be read (blank, text, NaN) MUST be
+skipped and counted, never mapped as 0; a refresh stores the count in
+`bejerman_snapshot_skipped_count` and logs it without the values.
 `amount` MUST be `CVE_IMPMONLOC` and `balance` `CVE_SALDOMONLOC`. The external id MUST
 be `CVETCO_COD|CVE_CODPVT|CVE_LETRA|CVE_NRO`, each part stripped. `number` MUST be the
 human form (`FHK A 00004-00001234`) with blank parts omitted. Dates MUST be ISO
@@ -121,7 +126,8 @@ map to `quotation`; every other type MUST map to `invoice`.
 
 - GIVEN rows with balance 0 and balance -50
 - WHEN the debt is mapped
-- THEN both MUST be omitted
+- THEN both MUST be omitted from the invoices
+- AND the -50 row MUST add 50 to that customer's `credit_total`
 
 ### Requirement: Debt snapshot refresh
 
@@ -170,8 +176,11 @@ the ERP. `state` MUST be `overdue` when the due date is before today in the comp
 timezone, else `open`, computed at read time and never stored. Before the first refresh
 both MUST fail closed with the generic not-configured `UserError`. Unknown, inactive, or
 other-seller customers MUST return `{customer: None, invoices: []}`. Snapshot rows MUST
-be company-scoped by an `ir.rule`, readable by `base.group_user`, and writable by
-`base.group_system` only; reading them MUST NOT require credential access.
+be company-scoped by an `ir.rule`, readable by `collection.group_collection_user` (not
+by plain internal users), and writable by `base.group_system` only; reading them MUST NOT
+require credential access. Snapshot and live debt answers MUST carry the customer's
+`credit_total` and `as_of` (the snapshot's refresh time, or the read time on the live
+path).
 
 #### Scenario: Debt from the snapshot
 
@@ -259,3 +268,67 @@ Missing ObtenerClientes or either Query view MUST fail closed with a generic
 - GIVEN refused ObtenerClientes or a missing Query view
 - WHEN Test Connection or a read op runs
 - THEN MUST raise a generic `UserError` with no leak
+
+### Requirement: Retries within a deadline
+
+The SOAP session MUST retry transient failures up to 3 attempts with exponential backoff
+and equal jitter, honouring a sane `Retry-After` capped at 30 s. Reads (ObtenerClientes,
+ObtenerJsonQueryVista) MUST retry on connect errors, timeouts, dropped connections, HTTP
+429, and 5xx; Registro MUST retry only when the server cannot have processed it (connect
+errors, 429, 503); CierreProceso MUST NOT retry. One session MUST finish within the
+admin-only `bejerman_deadline` (default 900 s): no request starts past it, each request
+timeout is capped by the time left, a retry that would pass it is not attempted, and
+answers are read in chunks against it. The HTTP client MUST be closed on every path,
+including a failed login.
+
+#### Scenario: Lost login answer is not retried
+
+- GIVEN Registro fails with a read timeout after the request was sent
+- WHEN the session opens
+- THEN Registro MUST NOT be sent again
+- AND the HTTP client MUST be closed
+
+### Requirement: Sync status and stale debt
+
+Each connector MUST record the start and end of its last successful refresh and the time,
+generic reason class, and count of failed scheduled refreshes; only a refresh writes
+them. On a cron failure every Collections Manager of the company MUST get one "Bejerman
+sync failed" activity on the connector; later failures MUST add none and the next
+successful refresh MUST remove it. The cron MUST NOT fail (a notice that cannot be
+posted is logged and skipped). Debt read from a snapshot older than
+`bejerman_snapshot_max_age_hours` (default 24, minimum 1, set by managers) MUST raise
+`ConnectorDataStaleError` with a generic message; the live filtered path has no age
+limit.
+
+#### Scenario: Old snapshot refused
+
+- GIVEN a snapshot from a refresh 30 hours old and a maximum age of 24
+- WHEN `get_customer_debt` runs
+- THEN MUST raise the generic "out of date" `UserError` and MUST NOT return invoices
+
+### Requirement: ERP-entered sheets released after the next refresh
+
+`_collection_erp_reflected_since()` MUST return the start of the last successful snapshot
+refresh, or now on the live filtered path. A sheet marked Entered in the ERP in
+`collection` MUST stop reserving its applied amounts against Bejerman balances only once
+a refresh that started after the mark succeeded; a refresh that started earlier, even if
+it finished later, or a failed one, MUST release nothing.
+
+### Requirement: Seller enable wizard
+
+From the connector's Sellers tab, administrators and Collections Managers MAY enable a
+snapshot seller: pick an internal user that already belongs to the connector's company
+(the server MUST refuse any other user, so enabling never adds company access) or create
+one in that company, set the phone and commission, then bind the user, write the phone
+on the user's partner as the current user without `sudo()` (only when it changed; a
+`UserError` asking an administrator to set it when the manager may not edit that
+contact, checked before any other write), and add the user to the enabled sellers. A
+user bound to another code or a phone used by another enabled seller MUST be refused.
+Disable seller MUST remove the user from the enabled sellers and keep the binding.
+
+#### Scenario: User from another company refused
+
+- GIVEN a Collections Manager and an internal user who does not belong to the connector's
+  company
+- WHEN the wizard is confirmed for that user (even over RPC)
+- THEN MUST raise `UserError` and MUST NOT create a binding or enable the seller
