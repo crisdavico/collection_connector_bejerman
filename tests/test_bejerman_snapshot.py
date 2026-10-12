@@ -488,6 +488,39 @@ class TestBejermanRefreshEntryPoints(BejermanTestMixin, TransactionCase):
         self.assertNotIn(_WS_URL, blob)
         self.assertNotIn("exploded", blob)
 
+    def test_cron_survives_a_failure_notice_it_cannot_post(self):
+        """A notice that cannot be posted (say, its activity type was deleted)
+        neither stops the cron nor loses the failure record."""
+        Connector = self.env["collection.connector"]
+        bad = self._make_connector(name="Bad")
+        good = self._make_connector(name="Good")
+        calls = []
+
+        def _fake_refresh(connector):
+            calls.append(connector.name)
+            if connector == bad:
+                raise RuntimeError("exploded " + _WS_URL)
+            return True
+
+        def _broken_notice(connector, reason):
+            raise ValueError("notice exploded " + _WS_URL)
+
+        with (
+            patch.object(type(good), "_bejerman_refresh_snapshot", new=_fake_refresh),
+            patch.object(
+                type(good), "_bejerman_notify_sync_failure", new=_broken_notice
+            ),
+            self.assertLogs(_CONNECTOR_LOGGER, level="WARNING") as logs,
+        ):
+            Connector._bejerman_cron_refresh_snapshot()
+        self.assertEqual(calls, ["Bad", "Good"])
+        self.assertEqual(bad.bejerman_failure_count, 1)
+        self.assertEqual(bad.bejerman_last_failure_reason, "other")
+        self.assertFalse(good.bejerman_failure_count)
+        blob = "\n".join(logs.output)
+        self.assertNotIn("exploded", blob)
+        self.assertNotIn(_WS_URL, blob)
+
     def test_cron_failure_keeps_each_previous_snapshot(self):
         """A failing connector keeps its snapshot while a healthy one updates."""
         healthy = self._make_connector(name="Healthy")

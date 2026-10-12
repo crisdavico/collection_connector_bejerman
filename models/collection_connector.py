@@ -491,11 +491,24 @@ class CollectionConnectorBejerman(models.Model):
                     connector.id,
                     type(exc).__name__,
                 )
-                connector._bejerman_record_sync_failure(failure_reason(exc))
+                try:
+                    with self.env.cr.savepoint():
+                        connector._bejerman_record_sync_failure(failure_reason(exc))
+                except Exception as record_exc:
+                    _logger.warning(
+                        "Bejerman sync failure of connector %s could not be "
+                        "recorded: %s",
+                        connector.id,
+                        type(record_exc).__name__,
+                    )
 
     @api.private
     def _bejerman_record_sync_failure(self, reason):
-        """Store the failure and notify the managers once per outage."""
+        """Store the failure and notify the managers once per outage.
+
+        The notice is best effort: one that cannot be posted (its activity type
+        deleted, say) is logged by class and never undoes the record.
+        """
         self.ensure_one()
         with privileged(SNAPSHOT_SCOPE):
             self.write(
@@ -505,7 +518,15 @@ class CollectionConnectorBejerman(models.Model):
                     "bejerman_failure_count": self.bejerman_failure_count + 1,
                 }
             )
-        self._bejerman_notify_sync_failure(reason)
+        try:
+            with self.env.cr.savepoint():
+                self._bejerman_notify_sync_failure(reason)
+        except Exception as exc:
+            _logger.warning(
+                "Bejerman sync failure notice of connector %s could not be posted: %s",
+                self.id,
+                type(exc).__name__,
+            )
 
     @api.private
     def _bejerman_sync_managers(self):
