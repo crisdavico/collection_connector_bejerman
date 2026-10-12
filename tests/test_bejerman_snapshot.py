@@ -38,6 +38,12 @@ from .test_bejerman_connector import (
 _CONNECTOR_LOGGER = (
     "odoo.addons.collection_connector_bejerman.models.collection_connector"
 )
+_COLLECTION_USER_GROUP = "collection.group_collection_user"
+_SNAPSHOT_MODELS = (
+    "collection.connector.bejerman.debt",
+    "collection.connector.bejerman.customer",
+    "collection.connector.bejerman.seller",
+)
 _SECRETS = (_WS_URL, "hunter2-bejerman-clave", "SESSIONTOKENDEADBEEFCAFE")
 _ONE_ROW_PACK = {
     "clientes": _CLIENTES[:1],
@@ -375,29 +381,25 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
             self.assertEqual(field.related, "connector_id.company_id")
             self.assertTrue(field.store)
         seller_reader = Seller.with_user(
-            self._create_user("snapshot_seller_reader", "base.group_user")
+            self._create_user("snapshot_seller_reader", _COLLECTION_USER_GROUP)
         )
         self.assertEqual(seller_reader.search([]).connector_id, connector_a)
-        internal = self._create_user("snapshot_internal", "base.group_user")
+        internal = self._create_user("snapshot_internal", _COLLECTION_USER_GROUP)
         visible = Debt.with_user(internal).search([])
         self.assertTrue(visible)
         self.assertEqual(visible.connector_id, connector_a)
         self.assertNotIn(connector_b, visible.connector_id)
         self.assertEqual(self._debts(connector_b).company_id, company_b)
 
-    def test_access_rights_read_only_for_internal_users(self):
-        """Internal users read the snapshot; only system administrators write it."""
+    def test_access_rights_read_only_for_collection_users(self):
+        """Collections Users (and MCP) read the snapshot; admins write it."""
         connector = self._make_connector()
         self._refresh(connector)
-        internal = self._create_user("snapshot_reader", "base.group_user")
+        internal = self._create_user("snapshot_reader", _COLLECTION_USER_GROUP)
         system = self._create_user(
             "snapshot_admin", "base.group_user", "base.group_system"
         )
-        for name in (
-            "collection.connector.bejerman.debt",
-            "collection.connector.bejerman.customer",
-            "collection.connector.bejerman.seller",
-        ):
+        for name in _SNAPSHOT_MODELS:
             reader = self.env[name].with_user(internal)
             self.assertTrue(reader.search([("connector_id", "=", connector.id)]))
             reader.check_access("read")
@@ -409,6 +411,23 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
                 admin.check_access(operation)
         stamp = connector.with_user(internal).read(["bejerman_snapshot_refreshed_at"])
         self.assertTrue(stamp[0]["bejerman_snapshot_refreshed_at"])
+
+    def test_plain_internal_users_cannot_read_the_snapshot(self):
+        """CRM users and seller identities get no ERP customer, debt or seller."""
+        connector = self._make_connector()
+        self._refresh(connector)
+        plain = self._create_user("snapshot_plain", "base.group_user")
+        for name in _SNAPSHOT_MODELS:
+            denied = self.env[name].with_user(plain)
+            for operation in ("read", "create", "write", "unlink"):
+                with (
+                    self.subTest(model=name, operation=operation),
+                    self.assertRaises(AccessError),
+                ):
+                    denied.check_access(operation)
+            with self.subTest(model=name, operation="search"):
+                with self.assertRaises(AccessError):
+                    denied.search([("connector_id", "=", connector.id)])
 
 
 class TestBejermanRelease(TransactionCase):
@@ -523,7 +542,7 @@ class TestBejermanRefreshEntryPoints(BejermanTestMixin, TransactionCase):
     def test_button_is_admin_only_and_bejerman_only(self):
         """Non-admins are refused; other connector types are unavailable."""
         connector = self._make_connector()
-        internal = self._create_user("refresh_internal", "base.group_user")
+        internal = self._create_user("refresh_internal", _COLLECTION_USER_GROUP)
         with _patch_httpx() as mock_post, self.assertRaises(AccessError):
             connector.with_user(internal).action_bejerman_refresh_snapshot()
         mock_post.assert_not_called()
@@ -536,7 +555,7 @@ class TestBejermanRefreshEntryPoints(BejermanTestMixin, TransactionCase):
 
     def test_form_shows_button_and_snapshot_fields_to_admins_only(self):
         """Refresh button, last refresh and counters are in the admin form only."""
-        internal = self._create_user("form_internal", "base.group_user")
+        internal = self._create_user("form_internal", _COLLECTION_USER_GROUP)
         system = self._create_user("form_admin", "base.group_user", "base.group_system")
         admin_arch = self._form_arch_for(system)
         user_arch = self._form_arch_for(internal)
@@ -660,7 +679,7 @@ class TestBejermanSnapshotReads(BejermanTestMixin, TransactionCase):
     def test_internal_user_reads_snapshot_without_credentials(self):
         """A non-admin caller reads the snapshot; credentials stay unreadable."""
         self._refresh(self.connector)
-        internal = self._create_user("snapshot_caller", "base.group_user")
+        internal = self._create_user("snapshot_caller", _COLLECTION_USER_GROUP)
         as_user = self.connector.with_user(internal)
         with _patch_today(self.connector):
             debt = as_user._bejerman_get_customer_debt("E", "20-12345678-9")
@@ -724,7 +743,7 @@ class TestBejermanSnapshotReads(BejermanTestMixin, TransactionCase):
         connector = self._make_connector(
             name="Live", bejerman_debt_filter_field="CVE_CODCLI"
         )
-        internal = self._create_user("live_caller", "base.group_user")
+        internal = self._create_user("live_caller", _COLLECTION_USER_GROUP)
         with _patch_httpx(), _patch_today(connector):
             debt = connector.with_user(internal)._bejerman_get_customer_debt(
                 "E", "20-12345678-9"
