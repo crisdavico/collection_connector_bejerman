@@ -1,0 +1,913 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* collection_connector_bejerman
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-12 07:40+0000\n"
+"PO-Revision-Date: 2026-10-12 07:40+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: es_AR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "%(debts)s open vouchers and %(customers)s customers loaded."
+msgstr ""
+"Se cargaron %(debts)s comprobantes pendientes y %(customers)s clientes."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid ""
+"%(user)s does not belong to %(company)s. An administrator must give the user"
+" access to the company before it can be enabled."
+msgstr ""
+"%(user)s no pertenece a %(company)s. Un administrador debe darle acceso a la"
+" empresa antes de que pueda habilitarse."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid "A name is required to create the user."
+msgstr "Se requiere un nombre para crear el usuario."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid "A seller phone is required."
+msgstr "Se requiere el teléfono del vendedor."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid ""
+"A user with login %(login)s already exists. Pick it as an existing user "
+"instead."
+msgstr ""
+"Ya existe un usuario con el inicio de sesión %(login)s. Selecciónelo como "
+"usuario existente."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_needaction
+msgid "Action Needed"
+msgstr "Se requiere una acción"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_ids
+msgid "Activities"
+msgstr "Actividades"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr "Decoración de la actividad de excepción"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_state
+msgid "Activity State"
+msgstr "Estado de la actividad"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_type_icon
+msgid "Activity Type Icon"
+msgstr "Icono del tipo de actividad"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_allow_insecure
+msgid "Allow Insecure Bejerman HTTP/TLS"
+msgstr "Permitir HTTP/TLS inseguro con Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__amount
+msgid "Amount"
+msgstr "Importe"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_attachment_count
+msgid "Attachment Count"
+msgstr "Número de archivos adjuntos"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__balance
+msgid "Balance"
+msgstr "Saldo"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__type__bejerman
+msgid "Bejerman"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_sucursal
+msgid "Bejerman Branch"
+msgstr "Sucursal de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_ca_bundle
+msgid "Bejerman CA Bundle"
+msgstr "Paquete de certificados CA de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_empresa
+msgid "Bejerman Company"
+msgstr "Empresa de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_customer
+msgid "Bejerman Customer Snapshot"
+msgstr "Instantánea de clientes de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_deadline
+msgid "Bejerman Deadline (s)"
+msgstr "Plazo máximo de Bejerman (s)"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_filter_field
+msgid "Bejerman Debt Filter Field"
+msgstr "Campo de filtro de deuda de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_scenario
+msgid "Bejerman Debt Scenario"
+msgstr "Escenario de deuda de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_view
+msgid "Bejerman Debt View"
+msgstr "Vista de deuda de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_debt
+msgid "Bejerman Open Debt Snapshot"
+msgstr "Instantánea de deuda pendiente de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_clave
+msgid "Bejerman Password"
+msgstr "Contraseña de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_quotation_kinds
+msgid "Bejerman Quotation Kinds"
+msgstr "Clases de presupuesto de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_scenario
+msgid "Bejerman Seller Scenario"
+msgstr "Escenario de vendedores de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_seller
+msgid "Bejerman Seller Snapshot"
+msgstr "Instantánea de vendedores de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_view
+msgid "Bejerman Seller View"
+msgstr "Vista de vendedores de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_ids
+msgid "Bejerman Sellers"
+msgstr "Vendedores de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_customer_count
+msgid "Bejerman Snapshot Customer Count"
+msgstr "Cantidad de clientes en la instantánea de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_debt_count
+msgid "Bejerman Snapshot Debt Count"
+msgstr "Cantidad de deudas en la instantánea de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_timeout
+msgid "Bejerman Timeout"
+msgstr "Tiempo de espera de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_usuario
+msgid "Bejerman User"
+msgstr "Usuario de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_ws_url
+msgid "Bejerman WS URL"
+msgstr "URL del WS de Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_puesto
+msgid "Bejerman Workstation"
+msgstr "Puesto de trabajo de Bejerman"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "Bejerman answered, but the session could not be closed."
+msgstr "Bejerman respondió, pero no se pudo cerrar la sesión."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__erp
+msgid "Bejerman refused the request"
+msgstr "Bejerman rechazó la solicitud"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid ""
+"Bejerman rejected the login. Check the user, password, company and "
+"workstation."
+msgstr ""
+"Bejerman rechazó el inicio de sesión. Verifique el usuario, la contraseña, "
+"la empresa y el puesto de trabajo."
+
+#. module: collection_connector_bejerman
+#: model:mail.activity.type,name:collection_connector_bejerman.mail_activity_type_bejerman_sync_failed
+msgid "Bejerman sync failed"
+msgstr "Falló la sincronización con Bejerman"
+
+#. module: collection_connector_bejerman
+#: model:ir.actions.server,name:collection_connector_bejerman.ir_cron_bejerman_refresh_snapshot_ir_actions_server
+msgid "Bejerman: refresh debt snapshot"
+msgstr "Bejerman: actualizar la instantánea de deuda"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__binding_id
+msgid "Binding"
+msgstr "Vínculo"
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_seller_enable_form
+msgid "Cancel"
+msgstr "Cancelar"
+
+#. module: collection_connector_bejerman
+#: model:ir.model,name:collection_connector_bejerman.model_collection_connector
+msgid "Collection Connector"
+msgstr "Conector de cobranzas"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__commission_percent
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__commission_percent
+msgid "Commission %"
+msgstr "Comisión %"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid "Commission percent must be between 0 and 100."
+msgstr "El porcentaje de comisión debe estar entre 0 y 100."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__company_id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__company_id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__company_id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__company_id
+msgid "Company"
+msgstr "Empresa"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "Connected to Bejerman, but the customer list could not be read."
+msgstr "Se conectó con Bejerman, pero no se pudo leer la lista de clientes."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__connector_id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__connector_id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__connector_id
+msgid "Connector"
+msgstr "Conector"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__connection
+msgid "Could not reach the Bejerman server"
+msgstr "No se pudo conectar con el servidor de Bejerman"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid ""
+"Could not reach the Bejerman server at %(host)s. Check the WS URL, the "
+"network connection and the certificate settings."
+msgstr ""
+"No se pudo conectar con el servidor de Bejerman en %(host)s. Verifique la "
+"URL del WS, la conexión de red y la configuración de certificados."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_seller_enable__user_mode__new
+msgid "Create new user"
+msgstr "Crear un usuario nuevo"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__create_uid
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__create_uid
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__create_uid
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__create_date
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__create_date
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__create_date
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__create_date
+msgid "Created on"
+msgstr "Creado el"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__credit_total
+msgid "Credit Total"
+msgstr "Total de créditos"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__customer_code
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__customer_code
+msgid "Customer Code"
+msgstr "Código de cliente"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.constraint,message:collection_connector_bejerman.constraint_collection_connector_bejerman_customer_connector_code_uniq
+msgid "Customer code must be unique per connector."
+msgstr "El código de cliente debe ser único por conector."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "Debt Snapshot Refreshed"
+msgstr "Instantánea de deuda actualizada"
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Debt Sync"
+msgstr "Sincronización de deuda"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_max_age_hours
+msgid ""
+"Debt read from a snapshot older than this is refused to sellers and "
+"operators instead of being shown."
+msgstr ""
+"La deuda leída de una instantánea más antigua que este valor se rechaza a "
+"vendedores y operadores en lugar de mostrarse."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_skipped_count
+msgid ""
+"Debt rows of the last refresh left out because their balance or amount could"
+" not be read. They are never counted as zero."
+msgstr ""
+"Filas de deuda de la última actualización que se omitieron porque no se pudo"
+" leer su saldo o importe. Nunca se cuentan como cero."
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Disable seller"
+msgstr "Deshabilitar vendedor"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__display_name
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__display_name
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__display_name
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__display_name
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__display_name
+msgid "Display Name"
+msgstr "Nombre en pantalla"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__document_kind
+msgid "Document Kind"
+msgstr "Clase de documento"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__due_date
+msgid "Due Date"
+msgstr "Fecha de vencimiento"
+
+#. module: collection_connector_bejerman
+#: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_seller_enable
+msgid "Enable Bejerman Seller"
+msgstr "Habilitar vendedor de Bejerman"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector_bejerman_seller.py:0
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_seller_enable_form
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Enable seller"
+msgstr "Habilitar vendedor"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__is_enabled
+msgid "Enabled"
+msgstr "Habilitado"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_seller_enable__user_mode__existing
+msgid "Existing user"
+msgstr "Usuario existente"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__external_invoice_id
+msgid "External Invoice"
+msgstr "Factura externa"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.constraint,message:collection_connector_bejerman.constraint_collection_connector_bejerman_debt_connector_invoice_uniq
+msgid "External invoice id must be unique per connector."
+msgstr "El id de factura externa debe ser único por conector."
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Failures"
+msgstr "Fallos"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_failure_count
+msgid "Failures Since Last Refresh"
+msgstr "Fallos desde la última actualización"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_follower_ids
+msgid "Followers"
+msgstr "Seguidores"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_partner_ids
+msgid "Followers (Partners)"
+msgstr "Seguidores (contactos)"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr "Icono de Font Awesome, por ejemplo, fa-tasks"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__has_message
+msgid "Has Message"
+msgstr "Tiene un mensaje"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__id
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__id
+msgid "ID"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_exception_icon
+msgid "Icon"
+msgstr "Icono"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr "Icono que indica una actividad de excepción."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__identification
+msgid "Identification"
+msgstr "Identificación"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr "Si está seleccionado, hay nuevos mensajes que requieren tu atención."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__message_has_error
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr "Si está seleccionado, algunos mensajes tienen error de envío."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_debt__document_kind__invoice
+msgid "Invoice"
+msgstr "Factura"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_is_follower
+msgid "Is Follower"
+msgstr "Es un seguidor"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__issue_date
+msgid "Issue Date"
+msgstr "Fecha de emisión"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_last_failure_at
+msgid "Last Failure"
+msgstr "Último fallo"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_last_failure_reason
+msgid "Last Failure Reason"
+msgstr "Motivo del último fallo"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_refreshed_at
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Last Refresh"
+msgstr "Última actualización"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_started_at
+msgid "Last Refresh Started"
+msgstr "Inicio de la última actualización"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__write_uid
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__write_uid
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__write_uid
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__write_uid
+msgid "Last Updated by"
+msgstr "Última actualización por"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__write_date
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__write_date
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__write_date
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__write_date
+msgid "Last Updated on"
+msgstr "Última actualización el"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_max_age_hours
+msgid "Maximum Debt Age (hours)"
+msgstr "Antigüedad máxima de la deuda (horas)"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_has_error
+msgid "Message Delivery error"
+msgstr "Error al enviar el mensaje"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_ids
+msgid "Messages"
+msgstr "Mensajes"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr "Fecha límite de mi actividad"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__name
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__name
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__seller_name
+msgid "Name"
+msgstr "Nombre"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__new_user_name
+msgid "New user name"
+msgstr "Nombre del usuario nuevo"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr "Siguiente fecha límite de la actividad"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_summary
+msgid "Next Activity Summary"
+msgstr "Resumen de la siguiente actividad"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_type_id
+msgid "Next Activity Type"
+msgstr "Siguiente tipo de actividad"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__number
+msgid "Number"
+msgstr "Número"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_needaction_counter
+msgid "Number of Actions"
+msgstr "Número de acciones"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_has_error_counter
+msgid "Number of errors"
+msgstr "Número de errores"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr "Número de mensajes que requieren una acción"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "Número de mensajes con error de envío"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__user_id
+msgid "Odoo User"
+msgstr "Usuario de Odoo"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector_bejerman_seller.py:0
+msgid "Only administrators and Collections Managers can do this."
+msgstr ""
+"Solo los administradores del sistema y los administradores de Cobranzas "
+"pueden realizar esta acción."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "Only administrators can refresh the Bejerman debt snapshot."
+msgstr ""
+"Solo los administradores del sistema pueden actualizar la instantánea de "
+"deuda de Bejerman."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__phone
+msgid "Phone"
+msgstr "Teléfono"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid "Pick the user to enable."
+msgstr "Seleccione el usuario a habilitar."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_debt_filter_field
+msgid ""
+"Query-view column (e.g. CVE_CODCLI) that filters the debt view by customer. "
+"When set, debt is read live per customer instead of from the snapshot."
+msgstr ""
+"Columna de la vista de consulta (por ejemplo, CVE_CODCLI) que filtra la "
+"vista de deuda por cliente. Si está configurada, la deuda se lee en vivo por"
+" cliente en lugar de leerse de la instantánea."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_debt__document_kind__quotation
+msgid "Quotation"
+msgstr "Presupuesto"
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Refresh Debt"
+msgstr "Actualizar deuda"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_user_id
+msgid "Responsible User"
+msgstr "Usuario responsable"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_skipped_count
+msgid "Rows Skipped (unreadable amount)"
+msgstr "Filas omitidas (importe ilegible)"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr "Error de envío del SMS"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_failure_count
+msgid "Scheduled refreshes that failed since the last successful one."
+msgstr "Actualizaciones programadas que fallaron desde la última exitosa."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__seller_id
+msgid "Seller"
+msgstr "Vendedor"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__seller_code
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__seller_code
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller__seller_code
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__seller_code
+msgid "Seller Code"
+msgstr "Código de vendedor"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__phone
+msgid "Seller WhatsApp number, written on the user's partner."
+msgstr ""
+"Número de WhatsApp del vendedor, que se guarda en el contacto del usuario."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.constraint,message:collection_connector_bejerman.constraint_collection_connector_bejerman_seller_connector_code_uniq
+msgid "Seller code must be unique per connector."
+msgstr "El código de vendedor debe ser único por conector."
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Sellers"
+msgstr "Vendedores"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+"Estado basado en las actividades\n"
+"Vencida: la fecha límite ya pasó\n"
+"Hoy: la fecha de la actividad es hoy\n"
+"Planificada: actividades futuras."
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
+msgid "Test Connection"
+msgstr "Probar conexión"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__data
+msgid "The Bejerman answer could not be read"
+msgstr "No se pudo leer la respuesta de Bejerman"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid ""
+"The Bejerman connector is not configured. Missing settings: %(settings)s."
+msgstr ""
+"El conector de Bejerman no está configurado. Faltan los parámetros: "
+"%(settings)s."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid ""
+"The Bejerman debt snapshot could not be refreshed. The previous snapshot was"
+" kept."
+msgstr ""
+"No se pudo actualizar la instantánea de deuda de Bejerman. Se conservó la "
+"instantánea anterior."
+
+#. module: collection_connector_bejerman
+#: model:mail.activity.type,summary:collection_connector_bejerman.mail_activity_type_bejerman_sync_failed
+msgid "The Bejerman debt snapshot is not refreshing"
+msgstr "La instantánea de deuda de Bejerman no se está actualizando"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid ""
+"The Bejerman debt snapshot of %(connector)s could not be refreshed "
+"(%(reason)s). Debt older than %(hours)s hours is refused to sellers and "
+"operators. Check the connector settings and the Bejerman server, then use "
+"Refresh Debt."
+msgstr ""
+"No se pudo actualizar la instantánea de deuda de Bejerman de %(connector)s "
+"(%(reason)s). La deuda con más de %(hours)s horas de antigüedad se rechaza a"
+" vendedores y operadores. Verifique la configuración del conector y el "
+"servidor de Bejerman, y luego use Actualizar deuda."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__timeout
+msgid "The Bejerman server took too long"
+msgstr "El servidor de Bejerman tardó demasiado"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "The Bejerman settings are not valid: %(reason)s."
+msgstr "La configuración de Bejerman no es válida: %(reason)s."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "The Bejerman snapshot status is only updated by a refresh."
+msgstr ""
+"El estado de la instantánea de Bejerman solo lo modifica una actualización "
+"de deuda."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "The collection connector is not configured."
+msgstr "El conector de cobranzas no está configurado."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__configuration
+msgid "The connector is not configured"
+msgstr "El conector no está configurado"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid ""
+"The customer debt is out of date: the last Bejerman update is older than "
+"%(hours)s hours. Ask a collections manager to check the Bejerman connection."
+msgstr ""
+"La deuda del cliente está desactualizada: la última actualización de "
+"Bejerman tiene más de %(hours)s horas. Solicite a un administrador de "
+"Cobranzas que verifique la conexión con Bejerman."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid "The maximum debt age must be at least one hour."
+msgstr "La antigüedad máxima de la deuda debe ser de al menos una hora."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid "The phone is already used by another enabled seller."
+msgstr "El teléfono ya lo usa otro vendedor habilitado."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+#: code:addons/collection_connector_bejerman/models/collection_connector_bejerman_seller.py:0
+msgid "The requested connector operation is not available."
+msgstr "La operación solicitada del conector no está disponible."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid "The seller must be an internal user."
+msgstr "El vendedor debe ser un usuario interno."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__storage
+msgid "The snapshot could not be stored"
+msgstr "No se pudo guardar la instantánea"
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector_bejerman_seller.py:0
+msgid "This seller is not enabled."
+msgstr "Este vendedor no está habilitado."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid "This user is already bound to seller %(code)s."
+msgstr "Este usuario ya está vinculado al vendedor %(code)s."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__type
+msgid "Type"
+msgstr "Tipo"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr "Tipo de la actividad de excepción registrada."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__other
+msgid "Unexpected error"
+msgstr "Error inesperado"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__user_id
+msgid "User"
+msgstr "Usuario"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__user_mode
+msgid "User Mode"
+msgstr "Modo de usuario"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_deadline
+msgid ""
+"Wall-clock limit of one Bejerman session (login, reads, retries and close). "
+"A download still running past it is aborted."
+msgstr ""
+"Límite de tiempo real de una sesión de Bejerman (inicio de sesión, lecturas,"
+" reintentos y cierre). Una descarga que siga en curso al superarlo se "
+"cancela."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_started_at
+msgid "When the last successful refresh started reading Bejerman."
+msgstr ""
+"Momento en que la última actualización exitosa comenzó a leer Bejerman."
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
+msgid ""
+"You cannot change the phone of %(user)s. An administrator must set it on the"
+" user's contact, then enable the seller again."
+msgstr ""
+"No puede cambiar el teléfono de %(user)s. Un administrador debe cargarlo en "
+"el contacto del usuario; luego habilite el vendedor nuevamente."
