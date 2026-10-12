@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record id="mail_activity_type_bejerman_sync_failed" model="mail.activity.type">
+        <field name="name">Bejerman sync failed</field>
+        <field name="summary">The Bejerman debt snapshot is not refreshing</field>
+        <field name="res_model">collection.connector</field>
+        <field name="icon">fa-exclamation-triangle</field>
+        <field name="category">default</field>
+        <field name="delay_count">0</field>
+    </record>
+</odoo>
