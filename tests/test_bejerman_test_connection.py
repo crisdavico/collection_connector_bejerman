@@ -105,7 +105,11 @@ class TestBejermanTestConnection(BejermanTestMixin, TransactionCase):
                 f"connect {_WS_URL} user=ADMIN clave={_CLAVE} Token={_SESSION_TOKEN}"
             )
 
-        with patch(f"{_SERVICE_SESSION}.httpx.Client.post", side_effect=_boom):
+        with (
+            patch(f"{_SERVICE_SESSION}.httpx.Client.post", side_effect=_boom),
+            # Connect errors are retried (T26); the test must not sleep.
+            patch(f"{_SERVICE_SESSION}._sleep"),
+        ):
             message = self._fail_message(connector)
         self.assertEqual(
             message,

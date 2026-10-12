@@ -32,3 +32,7 @@ class BejermanInsecureTransportError(BejermanConfigError):
 
 class BejermanTransportError(BejermanError):
     """HTTP failure or unparseable SOAP."""
+
+
+class BejermanDeadlineError(BejermanTransportError):
+    """The session ran past its overall deadline (never retried)."""

@@ -169,12 +169,8 @@ class TestBejermanSyncStatus(BejermanTestMixin, TransactionCase):
         self.assertEqual(self.connector.bejerman_last_failure_reason, "configuration")
 
     def _no_sleep(self):
-        """Retries (T26) must not sleep in tests; harmless before they exist."""
-        from odoo.addons.collection_connector_bejerman.service import session
-
-        if not hasattr(session, "_sleep"):
-            return patch.object(session, "_logger", session._logger)
-        return patch.object(session, "_sleep", new=lambda _seconds: None)
+        """Retried transport errors must not sleep in tests."""
+        return patch("odoo.addons.collection_connector_bejerman.service.session._sleep")
 
     def test_stale_snapshot_is_refused_with_a_generic_error(self):
         """Debt older than the threshold is refused, not served."""

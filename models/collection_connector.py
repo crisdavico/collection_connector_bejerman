@@ -22,6 +22,7 @@ from odoo.addons.collection.models.collection_common import (
 from ..service import mapping
 from ..service.errors import (
     BejermanConfigError,
+    BejermanDeadlineError,
     BejermanError,
     BejermanTransportError,
 )
@@ -32,6 +33,7 @@ _logger = logging.getLogger(__name__)
 
 DEFAULT_QUOTATION_KINDS = "PRE"
 DEFAULT_SNAPSHOT_MAX_AGE_HOURS = 24
+DEFAULT_DEADLINE_SECONDS = 900
 SYNC_FAILED_ACTIVITY = (
     "collection_connector_bejerman.mail_activity_type_bejerman_sync_failed"
 )
@@ -100,9 +102,9 @@ def failure_reason(exc):
     reason = getattr(exc, "bejerman_reason", None)
     if reason:
         return reason
+    if isinstance(exc, BejermanDeadlineError):
+        return "timeout"
     if isinstance(exc, BejermanTransportError):
-        if type(exc).__name__ == "BejermanDeadlineError":
-            return "timeout"
         return "connection"
     if isinstance(exc, BejermanConfigError):
         return "configuration"
@@ -149,6 +151,13 @@ class CollectionConnectorBejerman(models.Model):
     )
     bejerman_timeout = fields.Integer(
         default=60,
+        groups="base.group_system",
+    )
+    bejerman_deadline = fields.Integer(
+        string="Bejerman Deadline (s)",
+        default=DEFAULT_DEADLINE_SECONDS,
+        help="Wall-clock limit of one Bejerman session (login, reads, retries "
+        "and close). A download still running past it is aborted.",
         groups="base.group_system",
     )
     bejerman_allow_insecure = fields.Boolean(
@@ -288,6 +297,7 @@ class CollectionConnectorBejerman(models.Model):
             timeout=float(self.bejerman_timeout or 60),
             allow_insecure=bool(self.bejerman_allow_insecure),
             ca_bundle=self.bejerman_ca_bundle or "",
+            deadline=float(self.bejerman_deadline or DEFAULT_DEADLINE_SECONDS),
         )
 
     @api.private
