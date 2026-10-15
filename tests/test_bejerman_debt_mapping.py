@@ -289,6 +289,35 @@ class TestBejermanDebtMapping(TransactionCase):
         rows = self._mapping().map_customer_rows([_CLIENTES[0], twin])
         self.assertEqual([row["customer_code"] for row in rows], ["123"])
 
+    def test_find_customer_row_matches_code_and_unique_number(self):
+        """CUIT still matches; a code or its unique numeric tail does too."""
+        mapping = self._mapping()
+        norte = {
+            "Cliente_Codigo": "NS0160",
+            "Cliente_RazonSocial": "Norte SA",
+            "Cliente_CUIT": "30765432109",
+            "Cliente_Habilitado": True,
+            "Cliente_VendedorCodigo": "E",
+        }
+        ambiguous = dict(norte, Cliente_Codigo="AB0160", Cliente_CUIT="30111222339")
+        other = dict(
+            norte,
+            Cliente_Codigo="ZZ0160",
+            Cliente_VendedorCodigo="G",
+            Cliente_CUIT="27999888776",
+        )
+        inactive = dict(norte, Cliente_Codigo="NS0007", Cliente_Habilitado=False)
+        rows = [norte, ambiguous, other, inactive]
+        for query in ("30765432109", "30-76543210-9", "NS0160", "ns0160"):
+            found = mapping.find_customer_row(rows, "E", query)
+            self.assertIs(found, norte, query)
+        self.assertIsNone(mapping.find_customer_row(rows, "E", "0160"))
+        self.assertIsNone(mapping.find_customer_row(rows, "E", "ZZ0160"))
+        unique = [norte, other, inactive]
+        self.assertIs(mapping.find_customer_row(unique, "E", "0160"), norte)
+        self.assertIs(mapping.find_customer_row(unique, "E", "160"), norte)
+        self.assertIsNone(mapping.find_customer_row(rows, "E", "0007"))
+
     def test_queries_decode_json_in_json(self):
         """Query views answer a JSON string holding JSON; decode it once."""
         from odoo.addons.collection_connector_bejerman.service.queries import (

@@ -889,6 +889,64 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self.assertEqual(other, empty)
         self.assertEqual(inactive, empty)
 
+    def test_get_customer_debt_matches_code_and_unique_number(self):
+        """A customer code, or its number when only one customer has it, reads debt."""
+        connector = self._make_connector()
+        self._refresh(connector)
+        empty = {"customer": None, "invoices": []}
+        with _patch_today(connector):
+            by_cuit = connector._bejerman_get_customer_debt("E", "20-12345678-9")
+            by_code = connector._bejerman_get_customer_debt("E", "123")
+            by_padded = connector._bejerman_get_customer_debt("E", "000123")
+            other_code = connector._bejerman_get_customer_debt("E", "124")
+        self.assertEqual(by_code["customer"]["customer_code"], "123")
+        self.assertEqual(by_padded["customer"]["customer_code"], "123")
+        self.assertEqual(by_code["invoices"], by_cuit["invoices"])
+        self.assertEqual(other_code, empty)
+
+        norte = {
+            "Cliente_Codigo": "NS0160",
+            "Cliente_RazonSocial": "Norte SA",
+            "Cliente_CUIT": "30765432109",
+            "Cliente_Habilitado": True,
+            "Cliente_VendedorCodigo": "000E",
+        }
+        ambiguous = {
+            "Cliente_Codigo": "AB0160",
+            "Cliente_RazonSocial": "Ambiguous SA",
+            "Cliente_CUIT": "30111222339",
+            "Cliente_Habilitado": True,
+            "Cliente_VendedorCodigo": "000E",
+        }
+        debts = [
+            _debt_row("FHK", "1", "A", "9", "NS0160", "2026-03-01", 80, vendedor="E"),
+        ]
+        self._refresh(
+            connector,
+            payloads_by_url={
+                "*": {"clientes": [norte, ambiguous], "debts": debts},
+            },
+        )
+        with _patch_today(connector):
+            by_full = connector._bejerman_get_customer_debt("E", "NS0160")
+            by_lower = connector._bejerman_get_customer_debt("E", "ns0160")
+            shared_number = connector._bejerman_get_customer_debt("E", "0160")
+        self.assertEqual(by_full["customer"]["customer_code"], "NS0160")
+        self.assertEqual(by_lower["customer"]["customer_code"], "NS0160")
+        self.assertEqual(by_full["invoices"][0]["balance"], 80.0)
+        self.assertEqual(shared_number, empty)
+
+        self._refresh(
+            connector,
+            payloads_by_url={"*": {"clientes": [norte], "debts": debts}},
+        )
+        with _patch_today(connector):
+            by_number = connector._bejerman_get_customer_debt("E", "0160")
+            by_short = connector._bejerman_get_customer_debt("E", "160")
+        self.assertEqual(by_number["customer"]["customer_code"], "NS0160")
+        self.assertEqual(by_short["customer"]["customer_code"], "NS0160")
+        self.assertEqual(by_number["invoices"], by_full["invoices"])
+
     def test_emitted_ids_omit_query_prefixes(self):
         """Query-generated key prefixes must not appear in emitted ids/codes."""
         connector = self._make_connector()

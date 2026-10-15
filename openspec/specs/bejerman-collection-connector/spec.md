@@ -174,7 +174,11 @@ server side.
 `list_customers` and `get_customer_debt` MUST read the stored snapshot and MUST NOT call
 the ERP. `state` MUST be `overdue` when the due date is before today in the company
 timezone, else `open`, computed at read time and never stored. Before the first refresh
-both MUST fail closed with the generic not-configured `UserError`. Unknown, inactive, or
+both MUST fail closed with the generic not-configured `UserError`. `get_customer_debt`
+MUST match the canonical CUIT, the customer code (leading zeros stripped, case ignored),
+or a digits-only query other than an 11-digit CUIT against the trailing digits of the
+code (leading zeros ignored), so `0160` matches `NS0160`. Zero matches or more than one
+match for that seller MUST return `{customer: None, invoices: []}`. Unknown, inactive, or
 other-seller customers MUST return `{customer: None, invoices: []}`. Snapshot rows MUST
 be company-scoped by an `ir.rule`, readable by `collection.group_collection_user` (not
 by plain internal users), and writable by `base.group_system` only; reading them MUST NOT
@@ -199,6 +203,16 @@ path).
 - GIVEN unknown identification
 - WHEN `get_customer_debt` runs
 - THEN MUST return `{customer: None, invoices: []}`
+
+#### Scenario: Customer code and unique numeric tail
+
+- GIVEN seller E has one active customer `NS0160`
+- WHEN `get_customer_debt` runs for E with `NS0160`, `ns0160`, `0160`, or `160`
+- THEN that customer MUST be returned
+- GIVEN seller E also has active customer `AB0160`
+- WHEN `get_customer_debt` runs for E with `0160`
+- THEN MUST return `{customer: None, invoices: []}`
+- AND `NS0160` MUST still return the first customer
 
 ### Requirement: Optional live filtered debt
 

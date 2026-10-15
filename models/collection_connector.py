@@ -762,12 +762,14 @@ class CollectionConnectorBejerman(models.Model):
             [
                 ("connector_id", "=", self.id),
                 ("seller_code", "=", mapping.trim_code(external_seller_id)),
-                (
-                    "identification",
-                    "=",
-                    mapping.canonicalize_cuit(customer_identification),
-                ),
             ]
+        )
+        customers = customers.filtered(
+            lambda customer: mapping.matches_customer_query(
+                customer.identification,
+                customer.customer_code,
+                customer_identification,
+            )
         )
         if len(customers) != 1:
             return {"customer": None, "invoices": []}
