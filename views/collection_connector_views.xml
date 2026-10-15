@@ -5,24 +5,14 @@
         <field name="model">collection.connector</field>
         <field name="inherit_id" ref="collection.view_collection_connector_form" />
         <field name="arch" type="xml">
-            <xpath expr="//sheet" position="before">
-                <header>
-                    <button
-            name="test_connection"
-            type="object"
-            string="Test Connection"
-            class="btn-primary"
-            invisible="type != 'bejerman'"
-            groups="base.group_system"
-          />
-                    <button
-            name="action_bejerman_refresh_snapshot"
-            type="object"
-            string="Refresh Debt"
-            invisible="type != 'bejerman'"
-            groups="base.group_system"
-          />
-                </header>
+            <xpath expr="//header" position="inside">
+                <button
+          name="action_bejerman_refresh_snapshot"
+          type="object"
+          string="Refresh Debt"
+          invisible="type != 'bejerman'"
+          groups="base.group_system,collection.group_collection_manager"
+        />
             </xpath>
             <xpath expr="//field[@name='type']" position="after">
                 <field
@@ -44,22 +34,22 @@
                 <field
           name="bejerman_empresa"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
                 <field
           name="bejerman_puesto"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
                 <field
           name="bejerman_sucursal"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
                 <field
           name="bejerman_timeout"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
                 <field
           name="bejerman_deadline"
@@ -79,22 +69,22 @@
                 <field
           name="bejerman_debt_scenario"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
                 <field
           name="bejerman_debt_view"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
                 <field
           name="bejerman_debt_filter_field"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
                 <field
           name="bejerman_quotation_kinds"
           invisible="type != 'bejerman'"
-          groups="base.group_system"
+          groups="base.group_system,collection.group_collection_manager"
         />
             </xpath>
             <xpath expr="//notebook" position="inside">

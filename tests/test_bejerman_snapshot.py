@@ -232,6 +232,15 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
         self.assertEqual(kinds["PRE"], "quotation")
         self.assertEqual(kinds["FHK"], "invoice")
 
+    def test_refresh_refuses_a_blank_debt_view_without_calling_bejerman(self):
+        """A blank debt view is a configuration error, not a failed download."""
+        connector = self._make_connector(bejerman_debt_view="  ")
+        with _patch_httpx() as mock_post:
+            with self.assertRaises(UserError) as ctx:
+                connector._bejerman_refresh_snapshot()
+        mock_post.assert_not_called()
+        self.assertIn("Debt View", str(ctx.exception))
+
     def test_failed_refresh_keeps_previous_snapshot(self):
         """A failure at any ERP step leaves rows and counters untouched."""
         connector = self._make_connector()
@@ -441,13 +450,13 @@ class TestBejermanRelease(TransactionCase):
         read time, so no data migration is required.
         """
         manifest = load_manifest("collection_connector_bejerman")
-        self.assertEqual(manifest["version"], "19.0.1.3.0")
+        self.assertEqual(manifest["version"], "19.0.1.4.0")
         addon = Path(__file__).resolve().parent.parent
         self.assertFalse((addon / "migrations").exists())
 
 
 class TestBejermanRefreshEntryPoints(BejermanTestMixin, TransactionCase):
-    """Cron every 4 hours and the admin-only Refresh debt button."""
+    """Cron every 4 hours and the company manager Refresh Debt button."""
 
     def test_cron_record_runs_every_four_hours(self):
         """The cron is shipped active, every 4 hours, on the connector model."""
@@ -572,8 +581,8 @@ class TestBejermanRefreshEntryPoints(BejermanTestMixin, TransactionCase):
         self.assertIn("2", action["params"]["message"])
         self.assertEqual(connector.bejerman_snapshot_debt_count, 4)
 
-    def test_button_is_admin_only_and_bejerman_only(self):
-        """Non-admins are refused; other connector types are unavailable."""
+    def test_button_rejects_regular_users_and_other_types(self):
+        """Non-managers are refused; other connector types are unavailable."""
         connector = self._make_connector()
         internal = self._create_user("refresh_internal", _COLLECTION_USER_GROUP)
         with _patch_httpx() as mock_post, self.assertRaises(AccessError):
@@ -584,6 +593,20 @@ class TestBejermanRefreshEntryPoints(BejermanTestMixin, TransactionCase):
             other.action_bejerman_refresh_snapshot()
         self.assertEqual(
             str(ctx.exception), "The requested connector operation is not available."
+        )
+
+    def test_manager_refreshes_from_connector_form(self):
+        connector = self._make_connector()
+        manager = self._create_user(
+            "refresh_manager", "collection.group_collection_manager"
+        )
+        with _patch_httpx():
+            action = connector.with_user(manager).action_bejerman_refresh_snapshot()
+        self.assertEqual(action["tag"], "display_notification")
+        self.assertTrue(connector.bejerman_snapshot_refreshed_at)
+        arch = self._form_arch_for(manager)
+        self.assertEqual(
+            len(arch.xpath("//button[@name='action_bejerman_refresh_snapshot']")), 1
         )
 
     def test_form_shows_button_and_snapshot_fields_to_admins_only(self):

@@ -13,7 +13,7 @@ from .errors import BejermanTransportError
 
 class Executor(Protocol):
     def execute(
-        self, circuito: str, operacion: str, parametros_json: Any = None
+        self, circuit: str, operation: str, parameters_json: Any = None
     ) -> Any: ...
 
 
@@ -24,18 +24,18 @@ class QueriesOperations:
     def __init__(self, client: Executor) -> None:
         self._client = client
 
-    def obtener_json_query_vista(
+    def get_json_query_view(
         self,
-        escenario: str,
-        vista: str,
-        filtros: list[Any] | dict[str, Any] | str | None = None,
+        scenario: str,
+        view: str,
+        filters: list[Any] | dict[str, Any] | str | None = None,
     ) -> Any:
-        params: list[Any] = [escenario, vista]
-        if filtros is not None:
-            if isinstance(filtros, str):
-                params.append(filtros)
+        params: list[Any] = [scenario, view]
+        if filters is not None:
+            if isinstance(filters, str):
+                params.append(filters)
             else:
-                params.append(json.dumps(filtros))
+                params.append(json.dumps(filters))
         result = self._client.execute(CIRCUITO, "ObtenerJsonQueryVista", params)
         if isinstance(result, str):
             # Query views answer a JSON string that itself holds the JSON rows.

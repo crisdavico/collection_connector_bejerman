@@ -39,9 +39,9 @@ from .soap import (
     SOAPACTION_EJECUTAR,
     SOAPACTION_REGISTRO,
     SoapResult,
-    build_cierre,
-    build_ejecutar,
-    build_registro,
+    build_close,
+    build_execute,
+    build_register,
     parse_response,
     redact_soap,
 )
@@ -130,8 +130,8 @@ class BejermanClient:
         self._closing = False
         self._deadline_at = self._now() + settings.deadline
         self._token: str | None = None
-        self._last_circuito = ""
-        self._last_operacion = ""
+        self._last_circuit = ""
+        self._last_operation = ""
         if settings.ssl_verify is False:
             _logger.warning("TLS certificate verification is disabled")
         if settings.allow_insecure and settings.ws_url.lower().startswith("http://"):
@@ -150,12 +150,12 @@ class BejermanClient:
     def __enter__(self) -> BejermanClient:
         try:
             creds = self.settings.credentials
-            envelope = build_registro(
-                creds.usuario,
-                creds.clave,
-                creds.empresa,
-                creds.puesto,
-                creds.sucursal,
+            envelope = build_register(
+                creds.user,
+                creds.password,
+                creds.company,
+                creds.workstation,
+                creds.branch,
             )
             result = self._post(SOAPACTION_REGISTRO, envelope, _RETRY_NOT_SENT)
             _logger.info("Registro resultado=%s", result.resultado)
@@ -169,35 +169,35 @@ class BejermanClient:
 
     def execute(
         self,
-        circuito: str,
-        operacion: str,
-        parametros_json: Any = None,
+        circuit: str,
+        operation: str,
+        parameters_json: Any = None,
     ) -> Any:
         if not self._token:
             raise BejermanError(
                 "Not registered; use BejermanClient as a context manager"
             )
-        circuito = circuito.upper()
-        payload = {} if parametros_json is None else parametros_json
-        parametros_json_text = json.dumps(payload, ensure_ascii=False, default=str)
-        self._last_circuito = circuito
-        self._last_operacion = operacion
-        envelope = build_ejecutar(
-            circuito,
-            operacion,
-            parametros_json_text,
+        circuit = circuit.upper()
+        payload = {} if parameters_json is None else parameters_json
+        parameters_json_text = json.dumps(payload, ensure_ascii=False, default=str)
+        self._last_circuit = circuit
+        self._last_operation = operation
+        envelope = build_execute(
+            circuit,
+            operation,
+            parameters_json_text,
             self._token,
         )
         retry = (
             _RETRY_IDEMPOTENT
-            if (circuito, operacion.upper()) in IDEMPOTENT_OPERATIONS
+            if (circuit, operation.upper()) in IDEMPOTENT_OPERATIONS
             else _NO_RETRY
         )
         result = self._post(SOAPACTION_EJECUTAR, envelope, retry)
         _logger.info(
             "Ejecutar circuito=%s operacion=%s resultado=%s",
-            circuito,
-            operacion,
+            circuit,
+            operation,
             result.resultado,
         )
         self._raise_if_not_ok(result)
@@ -229,7 +229,7 @@ class BejermanClient:
         token = self._token
         if not token:
             return
-        envelope = build_cierre(token, self._last_circuito, self._last_operacion)
+        envelope = build_close(token, self._last_circuit, self._last_operation)
         self._closing = True
         try:
             result = self._post(SOAPACTION_CIERRE, envelope, _NO_RETRY)
@@ -237,8 +237,8 @@ class BejermanClient:
             self._closing = False
         _logger.info(
             "CierreProceso circuito=%s operacion=%s resultado=%s",
-            self._last_circuito,
-            self._last_operacion,
+            self._last_circuit,
+            self._last_operation,
             result.resultado,
         )
         self._raise_if_not_ok(result)
@@ -368,7 +368,7 @@ class BejermanClient:
         _logger.debug(
             "%s SOAP (redacted): %s",
             soap_action,
-            redact_soap(envelope, self.settings.credentials.clave),
+            redact_soap(envelope, self.settings.credentials.password),
         )
 
     @staticmethod

@@ -36,27 +36,27 @@ def _validate_ws_url(url: str, allow_insecure: bool) -> None:
 
 @dataclass
 class Credentials:
-    usuario: str
-    clave: str
-    empresa: str
-    puesto: str
-    sucursal: str = ""
+    user: str
+    password: str
+    company: str
+    workstation: str
+    branch: str = ""
 
     def __post_init__(self) -> None:
-        self.usuario = (self.usuario or "").upper()
-        self.empresa = (self.empresa or "").upper()
-        self.puesto = (self.puesto or "").upper()
-        if self.sucursal is None:
-            self.sucursal = ""
+        self.user = (self.user or "").upper()
+        self.company = (self.company or "").upper()
+        self.workstation = (self.workstation or "").upper()
+        if self.branch is None:
+            self.branch = ""
 
     def __repr__(self) -> str:
         return _redacted_repr(
             type(self).__name__,
-            usuario=self.usuario,
-            clave="***",
-            empresa=self.empresa,
-            puesto=self.puesto,
-            sucursal=self.sucursal,
+            user=self.user,
+            password="***",
+            company=self.company,
+            workstation=self.workstation,
+            branch=self.branch,
         )
 
     def __str__(self) -> str:
@@ -98,20 +98,20 @@ class Settings:
         return True
 
     @property
-    def usuario(self) -> str:
-        return self.credentials.usuario
+    def user(self) -> str:
+        return self.credentials.user
 
     @property
-    def empresa(self) -> str:
-        return self.credentials.empresa
+    def company(self) -> str:
+        return self.credentials.company
 
     @property
-    def puesto(self) -> str:
-        return self.credentials.puesto
+    def workstation(self) -> str:
+        return self.credentials.workstation
 
     @property
-    def sucursal(self) -> str:
-        return self.credentials.sucursal
+    def branch(self) -> str:
+        return self.credentials.branch
 
     def __repr__(self) -> str:
         return _redacted_repr(

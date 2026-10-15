@@ -300,7 +300,7 @@ class TestBejermanDebtMapping(TransactionCase):
             executor = MagicMock()
             executor.execute.return_value = answer
             self.assertEqual(
-                QueriesOperations(executor).obtener_json_query_vista("S", "V"), rows
+                QueriesOperations(executor).get_json_query_view("S", "V"), rows
             )
 
     def test_queries_reject_undecodable_string(self):
@@ -315,15 +315,15 @@ class TestBejermanDebtMapping(TransactionCase):
         executor = MagicMock()
         executor.execute.return_value = "SECRET-NOT-JSON"
         with self.assertRaises(BejermanTransportError) as ctx:
-            QueriesOperations(executor).obtener_json_query_vista("S", "V")
+            QueriesOperations(executor).get_json_query_view("S", "V")
         self.assertNotIn("SECRET", str(ctx.exception))
 
-    def test_obtener_clientes_sends_empty_list_params(self):
+    def test_get_customers_sends_empty_list_params(self):
         """The ERP refuses `{}`; ObtenerClientes takes an empty JSON list."""
         from odoo.addons.collection_connector_bejerman.service.tablas import (
             TablasOperations,
         )
 
         executor = MagicMock()
-        TablasOperations(executor).obtener_clientes()
+        TablasOperations(executor).get_customers()
         executor.execute.assert_called_once_with("TABLAS", "ObtenerClientes", [])

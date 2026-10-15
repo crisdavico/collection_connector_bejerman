@@ -577,6 +577,11 @@ msgid "New user name"
 msgstr "Nombre del usuario nuevo"
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_calendar_event_id
+msgid "Next Activity Calendar Event"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__activity_date_deadline
 msgid "Next Activity Deadline"
 msgstr "Siguiente fecha límite de la actividad"
@@ -628,14 +633,6 @@ msgid "Only administrators and Collections Managers can do this."
 msgstr ""
 "Solo los administradores del sistema y los administradores de Cobranzas "
 "pueden realizar esta acción."
-
-#. module: collection_connector_bejerman
-#. odoo-python
-#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
-msgid "Only administrators can refresh the Bejerman debt snapshot."
-msgstr ""
-"Solo los administradores del sistema pueden actualizar la instantánea de "
-"deuda de Bejerman."
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__phone
@@ -729,11 +726,6 @@ msgstr ""
 "Vencida: la fecha límite ya pasó\n"
 "Hoy: la fecha de la actividad es hoy\n"
 "Planificada: actividades futuras."
-
-#. module: collection_connector_bejerman
-#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
-msgid "Test Connection"
-msgstr "Probar conexión"
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__data

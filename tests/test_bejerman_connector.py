@@ -132,8 +132,7 @@ _BEJERMAN_CONFIG_FIELDS = (
     "bejerman_debt_filter_field",
     "bejerman_quotation_kinds",
 )
-# Kept as fields (the `collection` settings wizard references them) but unused
-# and hidden: still admin-only.
+# Legacy stored fields are unused and hidden: still admin-only.
 _UNUSED_SELLER_FIELDS = ("bejerman_seller_scenario", "bejerman_seller_view")
 _LEAK_TOKENS = (
     _ERROR_MSG,
@@ -568,11 +567,11 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         settings = Settings(
             ws_url=_WS_URL,
             credentials=Credentials(
-                usuario="ADMIN",
-                clave=_CLAVE,
-                empresa="MODE",
-                puesto="1",
-                sucursal="",
+                user="ADMIN",
+                password=_CLAVE,
+                company="MODE",
+                workstation="1",
+                branch="",
             ),
         )
         session_logger = "odoo.addons.collection_connector_bejerman.service.session"
@@ -588,7 +587,7 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             with self.assertLogs(session_logger, level="DEBUG") as captured:
                 with self.assertRaises(BejermanError) as ctx:
                     with BejermanClient(settings) as client:
-                        client.tablas.obtener_clientes()
+                        client.tablas.get_customers()
 
         actions = [_call_soap_action(call) for call in mock_post.call_args_list]
         self.assertEqual(actions[0], _SOAPACTION_REGISTRO)
@@ -694,7 +693,7 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         self.assertIn("EFlexSDK_WSCierreProceso", bodies[-1])
         self.assertFalse(any("ObtenerJsonQueryVista" in body for body in bodies))
 
-    def test_missing_obtener_clientes_fails_closed(self):
+    def test_missing_get_customers_fails_closed(self):
         """A missing ObtenerClientes is a UserError; Cierre still runs."""
         connector = self._make_connector()
         with _patch_httpx(fail=("ObtenerClientes",)) as mock_post:
@@ -979,19 +978,25 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         connector_a._bejerman_list_sellers()
         self.assertEqual(len(posted), count)
 
-    def test_admin_only_credentials_and_button(self):
-        """Only Settings admins see masked credentials and Test Connection."""
+    def test_connector_form_permissions(self):
+        """One form exposes manager settings while protecting system fields."""
         Connector = self.env["collection.connector"]
+        manager_fields = {
+            "bejerman_empresa",
+            "bejerman_puesto",
+            "bejerman_sucursal",
+            "bejerman_timeout",
+            "bejerman_debt_scenario",
+            "bejerman_debt_view",
+            "bejerman_debt_filter_field",
+            "bejerman_quotation_kinds",
+        }
         for name in _BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS:
-            field = Connector._fields[name]
-            groups = {
-                part.strip() for part in (field.groups or "").split(",") if part.strip()
-            }
-            self.assertIn(
-                "base.group_system",
-                groups,
-                f"{name} must be restricted to base.group_system",
-            )
+            groups = set(Connector._fields[name].groups.split(","))
+            expected = {"base.group_system"}
+            if name in manager_fields:
+                expected.add("collection.group_collection_manager")
+            self.assertEqual(groups, expected, name)
 
         manifest = load_manifest("collection_connector_bejerman")
         self.assertEqual(
@@ -1016,10 +1021,7 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             self.env.ref("collection.view_collection_connector_form"),
         )
         raw = etree.fromstring(view.arch)
-        buttons = raw.xpath("//button[@name='test_connection']")
-        self.assertEqual(len(buttons), 1)
-        self.assertEqual(buttons[0].get("groups"), "base.group_system")
-        self.assertIn("bejerman", buttons[0].get("invisible") or "")
+        self.assertFalse(raw.xpath("//button[@name='test_connection']"))
         for name in _BEJERMAN_CONFIG_FIELDS:
             nodes = raw.xpath(f"//field[@name='{name}']")
             self.assertTrue(nodes, f"form inherit must expose {name}")
@@ -1053,14 +1055,10 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
                 admin_arch.xpath(f"//field[@name='{name}']"),
                 f"the form must not show the unused {name}",
             )
-        admin_button = admin_arch.xpath(
-            "//button[@name='test_connection'][contains(@invisible, 'bejerman')]"
-        )
+        admin_button = admin_arch.xpath("//button[@name='test_connection']")
         self.assertTrue(admin_button, "admin form must expose Bejerman Test Connection")
         self.assertFalse(
-            user_arch.xpath(
-                "//button[@name='test_connection'][contains(@invisible, 'bejerman')]"
-            ),
+            user_arch.xpath("//button[@name='test_connection']"),
             "non-admin form must omit Bejerman Test Connection",
         )
         for name in ("bejerman_clave", "bejerman_usuario", "bejerman_ws_url"):
@@ -1073,6 +1071,23 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
                 f"non-admin form must omit {name}",
             )
 
+        manager = self._create_user(
+            "bejerman_settings_manager", "collection.group_collection_manager"
+        )
+        manager_arch = self._form_arch_for(manager)
+        self.assertEqual(
+            len(manager_arch.xpath("//button[@name='test_connection']")), 1
+        )
+        self.assertEqual(len(manager_arch.xpath("//header")), 1)
+        for name in manager_fields:
+            self.assertEqual(
+                len(manager_arch.xpath(f"//field[@name='{name}']")), 1, name
+            )
+        for name in (
+            set(_BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS) - manager_fields
+        ):
+            self.assertFalse(manager_arch.xpath(f"//field[@name='{name}']"), name)
+
         connector = self._make_connector()
         read = connector.with_user(system).read(["bejerman_clave", "bejerman_usuario"])
         self.assertEqual(read[0]["bejerman_clave"], _CLAVE)
@@ -1081,6 +1096,18 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             connector.with_user(internal).read(["bejerman_clave"])
         with self.assertRaises(AccessError):
             connector.with_user(internal).read(["bejerman_usuario"])
+
+    def test_manager_tests_stored_credentials_without_reading_them(self):
+        connector = self._make_connector()
+        manager = self._create_user(
+            "bejerman_test_manager", "collection.group_collection_manager"
+        )
+        managed = connector.with_user(manager)
+        with self.assertRaises(AccessError):
+            managed.read(["bejerman_clave"])
+        with _patch_httpx():
+            result = managed.test_connection()
+        self.assertEqual(result["tag"], "display_notification")
 
     def test_errors_no_leak(self):
         """SOAP, view, and credential failures omit _LEAK_TOKENS from UserError."""

@@ -47,7 +47,7 @@ def _settings(**overrides):
     values = {
         "ws_url": _WS_URL,
         "credentials": Credentials(
-            usuario="ADMIN", clave=_CLAVE, empresa="MODE", puesto="1"
+            user="ADMIN", password=_CLAVE, company="MODE", workstation="1"
         ),
         "timeout": 60.0,
         "deadline": 900.0,
@@ -121,7 +121,7 @@ class TestBejermanSessionRetry(TransactionCase):
         client = self._client(script, settings, **kwargs)
         with patch(f"{_SESSION}.httpx.Client.post", side_effect=script):
             with client:
-                return client.tablas.obtener_clientes()
+                return client.tablas.get_customers()
 
     def test_read_is_retried_after_a_timeout_then_succeeds(self):
         timeout = httpx.ReadTimeout("slow")
@@ -200,7 +200,7 @@ class TestBejermanSessionRetry(TransactionCase):
         with patch(f"{_SESSION}.httpx.Client.post", side_effect=script):
             with client:
                 clock.now += 90.0
-                client.tablas.obtener_clientes()
+                client.tablas.get_customers()
         timeouts = [kwargs["timeout"] for _action, kwargs in script.calls]
         self.assertEqual(timeouts[0].read, 60.0)
         self.assertAlmostEqual(timeouts[1].read, 10.0)
@@ -213,7 +213,7 @@ class TestBejermanSessionRetry(TransactionCase):
             with self.assertRaises(BejermanDeadlineError):
                 with client:
                     clock.now += 101.0
-                    client.tablas.obtener_clientes()
+                    client.tablas.get_customers()
         self.assertNotIn("Ejecutar", [call[0] for call in script.calls])
 
     def test_a_retry_that_would_pass_the_deadline_is_not_attempted(self):
@@ -223,7 +223,7 @@ class TestBejermanSessionRetry(TransactionCase):
         with patch(f"{_SESSION}.httpx.Client.post", side_effect=script):
             with self.assertRaises(BejermanDeadlineError):
                 with client:
-                    client.tablas.obtener_clientes()
+                    client.tablas.get_customers()
         self.assertEqual(self.sleeps, [])
 
     def test_a_trickling_answer_is_cut_at_the_deadline(self):
@@ -268,7 +268,7 @@ class TestBejermanSessionRetry(TransactionCase):
             None, _settings(), clock=clock, transport=httpx.MockTransport(_handler)
         )
         with client:
-            rows = client.tablas.obtener_clientes()
+            rows = client.tablas.get_customers()
         self.assertEqual(len(rows), len(_CLIENTES))
 
     def test_the_http_client_is_closed_when_login_fails(self):

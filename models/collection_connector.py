@@ -9,7 +9,7 @@ import pytz
 from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools.translate import _
 
 from odoo.addons.collection.models.collection_common import (
@@ -140,19 +140,19 @@ class CollectionConnectorBejerman(models.Model):
     )
     bejerman_empresa = fields.Char(
         string="Bejerman Company",
-        groups="base.group_system",
+        groups="base.group_system,collection.group_collection_manager",
     )
     bejerman_puesto = fields.Char(
         string="Bejerman Workstation",
-        groups="base.group_system",
+        groups="base.group_system,collection.group_collection_manager",
     )
     bejerman_sucursal = fields.Char(
         string="Bejerman Branch",
-        groups="base.group_system",
+        groups="base.group_system,collection.group_collection_manager",
     )
     bejerman_timeout = fields.Integer(
         default=60,
-        groups="base.group_system",
+        groups="base.group_system,collection.group_collection_manager",
     )
     bejerman_deadline = fields.Integer(
         string="Bejerman Deadline (s)",
@@ -169,8 +169,8 @@ class CollectionConnectorBejerman(models.Model):
         string="Bejerman CA Bundle",
         groups="base.group_system",
     )
-    # Unused since sellers come from the debt view, and hidden in the form. Kept as
-    # fields because the `collection` settings wizard still references them.
+    # Legacy fields, unused since sellers come from the debt view. Keep stored
+    # values for compatibility, but do not expose them in the configuration form.
     bejerman_seller_scenario = fields.Char(
         groups="base.group_system",
     )
@@ -178,20 +178,22 @@ class CollectionConnectorBejerman(models.Model):
         groups="base.group_system",
     )
     bejerman_debt_scenario = fields.Char(
-        groups="base.group_system",
+        string="Debt Scenario",
+        groups="base.group_system,collection.group_collection_manager",
     )
     bejerman_debt_view = fields.Char(
-        groups="base.group_system",
+        string="Debt View",
+        groups="base.group_system,collection.group_collection_manager",
     )
     bejerman_quotation_kinds = fields.Char(
         default=DEFAULT_QUOTATION_KINDS,
-        groups="base.group_system",
+        groups="base.group_system,collection.group_collection_manager",
     )
     bejerman_debt_filter_field = fields.Char(
         help="Query-view column (e.g. CVE_CODCLI) that filters the debt view by "
         "customer. When set, debt is read live per customer instead of from the "
         "snapshot.",
-        groups="base.group_system",
+        groups="base.group_system,collection.group_collection_manager",
     )
     # Snapshot bookkeeping is not sensitive and must stay readable by internal
     # users: the read path checks `bejerman_snapshot_refreshed_at` for its age.
@@ -296,11 +298,11 @@ class CollectionConnectorBejerman(models.Model):
         return Settings(
             ws_url=self.bejerman_ws_url or "",
             credentials=Credentials(
-                usuario=self.bejerman_usuario or "",
-                clave=self.bejerman_clave or "",
-                empresa=self.bejerman_empresa or "",
-                puesto=self.bejerman_puesto or "",
-                sucursal=self.bejerman_sucursal or "",
+                user=self.bejerman_usuario or "",
+                password=self.bejerman_clave or "",
+                company=self.bejerman_empresa or "",
+                workstation=self.bejerman_puesto or "",
+                branch=self.bejerman_sucursal or "",
             ),
             timeout=float(self.bejerman_timeout or 60),
             allow_insecure=bool(self.bejerman_allow_insecure),
@@ -392,7 +394,7 @@ class CollectionConnectorBejerman(models.Model):
         try:
             with BejermanClient(settings) as client:
                 stage = "customers"
-                client.tablas.obtener_clientes()
+                client.tablas.get_customers()
                 stage = "close"
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_test_failed(stage, exc, host)
@@ -419,6 +421,24 @@ class CollectionConnectorBejerman(models.Model):
         raise error from None
 
     @api.private
+    def _bejerman_require_debt_query(self):
+        """The debt view cannot be read until scenario and view are set."""
+        self.ensure_one()
+        missing = [
+            self._fields[name].string
+            for name in ("bejerman_debt_scenario", "bejerman_debt_view")
+            if not (self[name] or "").strip()
+        ]
+        if missing:
+            raise UserError(
+                _(
+                    "The Bejerman connector is not configured. "
+                    "Missing settings: %(settings)s.",
+                    settings=", ".join(missing),
+                )
+            )
+
+    @api.private
     def _bejerman_refresh_snapshot(self):
         """Download customers and the debt view, then replace this connector's snapshot.
 
@@ -429,15 +449,16 @@ class CollectionConnectorBejerman(models.Model):
         previous snapshot.
         """
         self.ensure_one()
+        self._bejerman_require_debt_query()
         started_at = fields.Datetime.now()
         stats = {}
         kinds = self._bejerman_quotation_kinds()
-        scenario = self.bejerman_debt_scenario or ""
-        view = self.bejerman_debt_view or ""
+        scenario = self.bejerman_debt_scenario.strip()
+        view = self.bejerman_debt_view.strip()
         try:
             with self._bejerman_client() as client:
-                customers = mapping.map_customer_rows(client.tablas.obtener_clientes())
-                debt_rows = client.queries.obtener_json_query_vista(scenario, view)
+                customers = mapping.map_customer_rows(client.tablas.get_customers())
+                debt_rows = client.queries.get_json_query_view(scenario, view)
                 # Debt of disabled or unknown customers is not brought.
                 codes = {row["customer_code"] for row in customers}
                 debts = mapping.map_open_debt(
@@ -585,15 +606,13 @@ class CollectionConnectorBejerman(models.Model):
         self._bejerman_sync_notices().unlink()
 
     def action_bejerman_refresh_snapshot(self):
-        """Admin button: refresh this connector's debt snapshot now."""
-        self.ensure_one()
-        if not self.env.user._is_system():
-            raise AccessError(
-                _("Only administrators can refresh the Bejerman debt snapshot.")
-            )
+        """Refresh only after checking management access to this company."""
+        self._check_collection_management_access()
         if self.type != "bejerman":
             raise UserError(_("The requested connector operation is not available."))
-        self._bejerman_refresh_snapshot()
+        # Credentials and server paths remain system-only; elevation is limited
+        # to this checked connector and the fixed refresh operation.
+        self.sudo()._bejerman_refresh_snapshot()
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -775,20 +794,21 @@ class CollectionConnectorBejerman(models.Model):
         filter server side. Runs on a sudo record: credentials stay admin-only.
         """
         self.ensure_one()
+        self._bejerman_require_debt_query()
         field = self.bejerman_debt_filter_field
 
         def _get_debt(client):
             row = mapping.find_customer_row(
-                client.tablas.obtener_clientes(),
+                client.tablas.get_customers(),
                 external_seller_id,
                 customer_identification,
             )
             if row is None:
                 return {"customer": None, "invoices": []}
             customer = mapping.customer_from_row(row)
-            rows = client.queries.obtener_json_query_vista(
-                self.bejerman_debt_scenario or "",
-                self.bejerman_debt_view or "",
+            rows = client.queries.get_json_query_view(
+                self.bejerman_debt_scenario.strip(),
+                self.bejerman_debt_view.strip(),
                 mapping.debt_filter(field, mapping.erp_customer_code(row)),
             )
             today = self._bejerman_today()

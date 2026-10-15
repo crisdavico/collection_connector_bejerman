@@ -5,19 +5,22 @@ client: Registro, then Ejecutar, then Cierre even when Ejecutar fails. Reads nee
 `ObtenerClientes` plus the debt Queries view; missing grants fail closed. There is no
 receipt write-back, no MCP, no menus, no sample ERP data, and no `post_init_hook`.
 Depends on `collection` and `mail`. Requires the `httpx` Python extra. Credentials and
-connection settings are Settings-only (`base.group_system`); clave is password-masked.
-Test Connection needs an administrator or a Collections Manager of the connector's
-company. Transient failures are retried up to 3 times with exponential backoff and
-jitter (an HTTP `Retry-After` is honoured, capped at 30 s): the read operations on
-connect errors, timeouts, dropped connections, HTTP 429 and 5xx; Registro only when the
-server cannot have processed it (connect errors, HTTP 429 and 503), so a lost answer
-never opens a second ERP session; CierreProceso never. One session (login, reads,
-retries and close) must finish within **Bejerman Deadline (s)** (default 900): each
-request's timeout is capped by the time left and every answer is read in chunks against
-it, so a slowly trickling download is aborted. The HTTP client is closed on every path,
-a failed login included. Faults raise a generic `UserError` with no SOAP, Token, URL,
-user, or clave. Customer listing and customer debt are seller-scoped and stay in this
-addon; `collection` does not call Bejerman.
+connection settings use the shared connector form opened by **Configure Connection**.
+Credentials, endpoint, TLS, server paths and the session deadline are Settings-only
+(`base.group_system`); clave is password-masked. Collections Managers can edit company,
+workstation, branch, timeout and debt query settings for their company. Test Connection
+needs an administrator or a Collections Manager of the connector's company. Transient
+failures are retried up to 3 times with exponential backoff and jitter (an HTTP
+`Retry-After` is honoured, capped at 30 s): the read operations on connect errors,
+timeouts, dropped connections, HTTP 429 and 5xx; Registro only when the server cannot
+have processed it (connect errors, HTTP 429 and 503), so a lost answer never opens a
+second ERP session; CierreProceso never. One session (login, reads, retries and close)
+must finish within **Bejerman Deadline (s)** (default 900): each request's timeout is
+capped by the time left and every answer is read in chunks against it, so a slowly
+trickling download is aborted. The HTTP client is closed on every path, a failed login
+included. Faults raise a generic `UserError` with no SOAP, Token, URL, user, or clave.
+Customer listing and customer debt are seller-scoped and stay in this addon;
+`collection` does not call Bejerman.
 
 Debt snapshot: the debt view (`Saldos al día/*`, one row per sales voucher) is a ~200 MB
 download, so it is never read per question. A refresh downloads the customers and the
@@ -31,9 +34,10 @@ customer row, and replaces the stored snapshot in one transaction
 download. A failed refresh keeps the previous snapshot. The snapshot rows are read-only
 and visible only to Collections Users (operators and the MCP API user) of the company;
 plain internal users cannot read them, and administrators keep full access. Refresh runs
-every 4 hours (`ir.cron`) and from the administrator-only **Refresh Debt** button.
-Before the first refresh, `list_customers` and `get_customer_debt` fail closed with the
-generic "not configured" error rather than downloading inline.
+every 4 hours (`ir.cron`) and from **Refresh Debt** for administrators and the connector
+company's Collections Managers. Before the first refresh, `list_customers` and
+`get_customer_debt` fail closed with the generic "not configured" error rather than
+downloading inline.
 
 Sync status: the connector form's **Debt Sync** tab (collections managers and
 administrators) shows when the last successful refresh started and ended, the row counts
@@ -44,12 +48,12 @@ storage) and the number of failures since the last success. Only a refresh write
 fields. When the cron fails, every collections manager of the connector's company gets
 one **Bejerman sync failed** activity on the connector; further failures add none, and
 the next successful refresh removes it. The cron itself does not fail, so it is never
-deactivated. A failing manual **Refresh Debt** shows its error to the administrator
-instead. Debt read from a snapshot older than **Maximum Debt Age (hours)** (default 24,
-set by managers) is refused with a generic "out of date" error, in the agent's
-`customer_debt`, in the Add Debt picker and when an allocation snapshots its lines,
-instead of serving stale figures. Every debt answer carries `as_of`: the snapshot's
-refresh time, or the read time on the live path, shown in the company timezone.
+deactivated. A failing manual **Refresh Debt** shows its error to the operator instead.
+Debt read from a snapshot older than **Maximum Debt Age (hours)** (default 24, set by
+managers) is refused with a generic "out of date" error, in the agent's `customer_debt`,
+in the Add Debt picker and when an allocation snapshots its lines, instead of serving
+stale figures. Every debt answer carries `as_of`: the snapshot's refresh time, or the
+read time on the live path, shown in the company timezone.
 
 Sheets entered in the ERP: receipts are typed into Bejerman by hand and a collections
 manager marks the closed sheet **Entered in the ERP** (`collection`). Its applied

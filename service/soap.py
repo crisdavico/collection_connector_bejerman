@@ -65,68 +65,68 @@ def _envelope() -> tuple[ET.Element, ET.Element]:
     return envelope, body
 
 
-def _parametros(parent: ET.Element) -> None:
-    parametros = _sub(parent, DATACONTRACT_NS, "Parametros")
-    ET.SubElement(parametros, _qn(ARRAYS_NS, "anyType"))
+def _parameters(parent: ET.Element) -> None:
+    parameters = _sub(parent, DATACONTRACT_NS, "Parametros")
+    ET.SubElement(parameters, _qn(ARRAYS_NS, "anyType"))
 
 
 def _xrequest(
     parent: ET.Element,
-    circuito: str,
-    operacion: str,
-    parametros_json_text: str,
+    circuit: str,
+    operation: str,
+    parameters_json_text: str,
     token: str,
 ) -> ET.Element:
     xrequest = _sub(parent, OPS_NS, "xRequest")
-    _sub(xrequest, DATACONTRACT_NS, "Circuito", circuito)
-    _sub(xrequest, DATACONTRACT_NS, "Operacion", operacion)
-    _parametros(xrequest)
-    _sub(xrequest, DATACONTRACT_NS, "ParametrosJson", parametros_json_text)
+    _sub(xrequest, DATACONTRACT_NS, "Circuito", circuit)
+    _sub(xrequest, DATACONTRACT_NS, "Operacion", operation)
+    _parameters(xrequest)
+    _sub(xrequest, DATACONTRACT_NS, "ParametrosJson", parameters_json_text)
     _sub(xrequest, DATACONTRACT_NS, "Token", token)
     return xrequest
 
 
-def build_registro(
-    usuario: str,
-    clave: str,
-    empresa: str,
-    puesto: str,
-    sucursal: str = "",
+def build_register(
+    user: str,
+    password: str,
+    company: str,
+    workstation: str,
+    branch: str = "",
 ) -> str:
     envelope, body = _envelope()
     op = _sub(body, OPS_NS, "EFlexSDK_WSRegistro")
-    _sub(op, OPS_NS, "xUsuario", usuario)
-    _sub(op, OPS_NS, "xClave", clave)
-    _sub(op, OPS_NS, "xCodEmpresa", empresa)
-    _sub(op, OPS_NS, "xPtoTrabajo", puesto)
-    _sub(op, OPS_NS, "xCodSucursal", sucursal)
+    _sub(op, OPS_NS, "xUsuario", user)
+    _sub(op, OPS_NS, "xClave", password)
+    _sub(op, OPS_NS, "xCodEmpresa", company)
+    _sub(op, OPS_NS, "xPtoTrabajo", workstation)
+    _sub(op, OPS_NS, "xCodSucursal", branch)
     return _tostring(envelope)
 
 
-def build_ejecutar(
-    circuito: str,
-    operacion: str,
-    parametros_json_text: str,
+def build_execute(
+    circuit: str,
+    operation: str,
+    parameters_json_text: str,
     token: str,
 ) -> str:
     envelope, body = _envelope()
     op = _sub(body, OPS_NS, "EFlexSDK_WSEjecutar")
-    _xrequest(op, circuito, operacion, parametros_json_text, token)
+    _xrequest(op, circuit, operation, parameters_json_text, token)
     return _tostring(envelope)
 
 
-def build_cierre(token: str, circuito: str = "", operacion: str = "") -> str:
+def build_close(token: str, circuit: str = "", operation: str = "") -> str:
     envelope, body = _envelope()
     op = _sub(body, OPS_NS, "EFlexSDK_WSCierreProceso")
-    _xrequest(op, circuito, operacion, "", token)
+    _xrequest(op, circuit, operation, "", token)
     return _tostring(envelope)
 
 
-def redact_soap(xml_text: str, clave: str = "") -> str:
+def redact_soap(xml_text: str, password: str = "") -> str:
     """Replace Token and xClave element text (and the password if it appears)."""
     redacted = _REDACT_VALUE.sub(r"\1***", xml_text)
-    if clave:
-        redacted = redacted.replace(clave, "***")
+    if password:
+        redacted = redacted.replace(password, "***")
     return redacted
 
 
