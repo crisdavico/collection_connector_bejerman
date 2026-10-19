@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 19:58+0000\n"
-"PO-Revision-Date: 2026-10-15 19:58+0000\n"
+"POT-Creation-Date: 2026-10-19 12:53+0000\n"
+"PO-Revision-Date: 2026-10-19 12:53+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -127,16 +127,6 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_filter_field
 msgid "Bejerman Debt Filter Field"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_scenario
-msgid "Bejerman Debt Scenario"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_view
-msgid "Bejerman Debt View"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -332,6 +322,11 @@ msgid "Customer code must be unique per connector."
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_scenario
+msgid "Debt Scenario"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #. odoo-python
 #: code:addons/collection_connector_bejerman/models/collection_connector.py:0
 msgid "Debt Snapshot Refreshed"
@@ -340,6 +335,11 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
 msgid "Debt Sync"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_view
+msgid "Debt View"
 msgstr ""
 
 #. module: collection_connector_bejerman
