@@ -1,6 +1,9 @@
 # Copyright 2026 Seedian
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
+import json
+from datetime import date
+
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase
 
@@ -8,6 +11,7 @@ from .test_bejerman_connector import (
     _DEBT_ROWS,
     _REFRESH_FAILED,
     _SOAPACTION_CIERRE,
+    _TODAY,
     _UNTAXED_SCENARIO,
     _UNTAXED_VIEW,
     BejermanTestMixin,
@@ -22,6 +26,13 @@ from .test_bejerman_connector import (
 _CONNECTOR_LOGGER = (
     "odoo.addons.collection_connector_bejerman.models.collection_connector"
 )
+
+
+def _date_filter(since, until):
+    return [
+        {"Campo": "Fecha_Emision >=", "Valor": since},
+        {"Campo": "Fecha_Emision <=", "Valor": until},
+    ]
 
 
 class TestBejermanUntaxedMapping(TransactionCase):
@@ -70,14 +81,23 @@ class TestBejermanUntaxedMapping(TransactionCase):
         shares = mapping.map_untaxed_shares(rows)
         self.assertAlmostEqual(shares[("FHK|00004|A|00000001", "1")], 200 / 231.5)
 
-    def test_apply_untaxed_matches_partial_quotation_and_unmatched(self):
-        """Matched invoice: share of amount and balance; others: the total."""
+    def test_date_filter_covers_the_last_365_days(self):
+        """Both variable filters of the view: 365 days ago and today, DD/MM/YYYY."""
+        mapping = self._mapping()
+        self.assertEqual(
+            mapping.untaxed_date_filter(date(2026, 2, 15)),
+            _date_filter("15/02/2025", "15/02/2026"),
+        )
+
+    def test_apply_untaxed_keeps_only_listed_invoices(self):
+        """Matched invoice: share of amount and balance; unlisted ones are dropped."""
         mapping = self._mapping()
         entries = mapping.map_open_debt(_DEBT_ROWS, "PRE")
         shares = {("FHK|00004|A|00001234", "123"): 0.8}
         stats = {}
-        mapping.apply_untaxed(entries, shares, stats)
-        by_id = {entry["external_invoice_id"]: entry for entry in entries}
+        kept = mapping.apply_untaxed(entries, shares, stats, since=date(2025, 2, 15))
+        by_id = {entry["external_invoice_id"]: entry for entry in kept}
+        self.assertEqual(set(by_id), {"FHK|00004|A|00001234", "PRE|00004||00000077"})
         partial = by_id["FHK|00004|A|00001234"]
         self.assertEqual(partial["amount"], 1000.0)
         self.assertEqual(partial["balance"], 500.0)
@@ -86,23 +106,43 @@ class TestBejermanUntaxedMapping(TransactionCase):
         quotation = by_id["PRE|00004||00000077"]
         self.assertEqual(quotation["amount_untaxed"], quotation["amount"])
         self.assertEqual(quotation["balance_untaxed"], quotation["balance"])
-        for external_id in ("SID|||00000005", "FHK|00004|A|00001235"):
-            unmatched = by_id[external_id]
-            self.assertEqual(unmatched["amount_untaxed"], unmatched["amount"])
-            self.assertEqual(unmatched["balance_untaxed"], unmatched["balance"])
         self.assertEqual(stats["untaxed_unmatched"], 2)
         self.assertEqual(
             stats["untaxed_unmatched_ids"],
             ["SID|||00000005", "FHK|00004|A|00001235"],
         )
+        self.assertNotIn("quotations_outside_window", stats)
 
-    def test_apply_untaxed_without_the_view_keeps_the_total(self):
-        """No configured view: untaxed equals the total and nothing is counted."""
+    def test_apply_untaxed_keeps_quotations_of_the_last_365_days(self):
+        """A quotation issued on the first day of the window stays; older ones go.
+
+        Every `_DEBT_ROWS` voucher is issued on 2026-01-01.
+        """
+        mapping = self._mapping()
+        shares = {("FHK|00004|A|00001234", "123"): 0.8}
+        for since, kept_quotation in (
+            (date(2026, 1, 1), True),
+            (date(2026, 1, 2), False),
+        ):
+            with self.subTest(since=since):
+                entries = mapping.map_open_debt(_DEBT_ROWS, "PRE")
+                stats = {}
+                kept = mapping.apply_untaxed(entries, shares, stats, since=since)
+                ids = {entry["external_invoice_id"] for entry in kept}
+                self.assertEqual("PRE|00004||00000077" in ids, kept_quotation)
+                self.assertEqual(
+                    stats.get("quotations_outside_window", 0),
+                    0 if kept_quotation else 1,
+                )
+
+    def test_apply_untaxed_without_the_view_keeps_every_entry(self):
+        """No configured view: nothing is dropped, untaxed equals the total."""
         mapping = self._mapping()
         entries = mapping.map_open_debt(_DEBT_ROWS, "PRE")
         stats = {}
-        mapping.apply_untaxed(entries, None, stats)
-        for entry in entries:
+        kept = mapping.apply_untaxed(entries, None, stats, since=date(2026, 2, 1))
+        self.assertEqual(len(kept), len(entries))
+        for entry in kept:
             self.assertEqual(entry["amount_untaxed"], entry["amount"])
             self.assertEqual(entry["balance_untaxed"], entry["balance"])
         self.assertEqual(stats, {})
@@ -127,37 +167,69 @@ class TestBejermanUntaxedSnapshot(BejermanTestMixin, TransactionCase):
             )
         }
 
-    def test_refresh_stores_the_untaxed_share_in_the_same_session(self):
-        """One more read in the same session; unmatched invoices are logged."""
+    def _refresh_on(self, connector, today=_TODAY, **kwargs):
+        with _patch_today(connector, today):
+            return self._refresh(connector, **kwargs)
+
+    def test_refresh_keeps_only_invoices_of_both_views(self):
+        """The VAT book is read for the last 365 days; unlisted invoices are dropped."""
         connector = self._untaxed_connector()
         with self.assertLogs(_CONNECTOR_LOGGER, level="WARNING") as logs:
-            mock_post = self._refresh(connector)
+            mock_post = self._refresh_on(connector)
         calls = mock_post.call_args_list
         self.assertEqual(len(calls), 5)
         self.assertEqual(_call_soap_action(calls[-1]), _SOAPACTION_CIERRE)
-        self.assertEqual(
-            _parametros_json(_call_body(calls[3])), [_UNTAXED_SCENARIO, _UNTAXED_VIEW]
-        )
+        scenario, view, filters = _parametros_json(_call_body(calls[3]))
+        self.assertEqual((scenario, view), (_UNTAXED_SCENARIO, _UNTAXED_VIEW))
+        self.assertEqual(json.loads(filters), _date_filter("15/02/2025", "15/02/2026"))
         debts = self._debts(connector)
+        self.assertEqual(set(debts), {"FHK|00004|A|00001234", "PRE|00004||00000077"})
+        self.assertEqual(connector.bejerman_snapshot_debt_count, 2)
         partial = debts["FHK|00004|A|00001234"]
         self.assertEqual(partial.amount_untaxed, 800.0)
         self.assertEqual(partial.balance_untaxed, 400.0)
         quotation = debts["PRE|00004||00000077"]
         self.assertEqual(quotation.amount_untaxed, 200.0)
         self.assertEqual(quotation.balance_untaxed, 200.0)
-        unmatched = debts["FHK|00004|A|00001235"]
-        self.assertEqual(unmatched.amount_untaxed, 999.0)
-        self.assertEqual(unmatched.balance_untaxed, 999.0)
         blob = "\n".join(logs.output)
-        self.assertIn("2 open invoices have no untaxed amount", blob)
+        self.assertIn(
+            "2 open invoices are not in the sales VAT book view of the last 365 "
+            "days and were left out",
+            blob,
+        )
         self.assertIn("FHK|00004|A|00001235", blob)
 
+    def test_refresh_leaves_out_quotations_older_than_365_days(self):
+        """A year later the window moves: the old quotation is dropped and logged."""
+        connector = self._untaxed_connector()
+        with self.assertLogs(_CONNECTOR_LOGGER, level="WARNING") as logs:
+            mock_post = self._refresh_on(connector, today=date(2027, 1, 20))
+        _scenario, _view, filters = _parametros_json(
+            _call_body(mock_post.call_args_list[3])
+        )
+        self.assertEqual(json.loads(filters), _date_filter("20/01/2026", "20/01/2027"))
+        self.assertEqual(set(self._debts(connector)), {"FHK|00004|A|00001234"})
+        self.assertIn(
+            "1 open quotations were issued before 2026-01-20 and were left out",
+            "\n".join(logs.output),
+        )
+
     def test_refresh_without_the_view_makes_no_extra_request(self):
-        """Not configured: the untaxed amount is the total, as before."""
+        """Not configured: every open debt stays and untaxed is the total, as before."""
         connector = self._make_connector()
-        mock_post = self._refresh(connector)
+        mock_post = self._refresh_on(connector)
         self.assertEqual(len(mock_post.call_args_list), 4)
-        for debt in self._debts(connector).values():
+        debts = self._debts(connector)
+        self.assertEqual(
+            set(debts),
+            {
+                "FHK|00004|A|00001234",
+                "PRE|00004||00000077",
+                "SID|||00000005",
+                "FHK|00004|A|00001235",
+            },
+        )
+        for debt in debts.values():
             self.assertEqual(debt.amount_untaxed, debt.amount)
             self.assertEqual(debt.balance_untaxed, debt.balance)
 
@@ -193,7 +265,7 @@ class TestBejermanUntaxedSnapshot(BejermanTestMixin, TransactionCase):
         """The snapshot hands `amount_untaxed` to `collection`."""
         connector = self._untaxed_connector()
         with self.assertLogs(_CONNECTOR_LOGGER, level="WARNING"):
-            self._refresh(connector)
+            self._refresh_on(connector)
         with _patch_today(connector):
             debt = connector._dispatch("get_customer_debt", "E", "20123456789")
         by_id = {row["id"]: row for row in debt["invoices"]}

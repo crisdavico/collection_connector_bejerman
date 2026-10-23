@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable, Mapping
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from odoo.addons.collection.customer_match import matches_customer_query
@@ -235,6 +235,12 @@ _UNTAXED_ALIASES = {
 }
 # How many unmatched invoice ids a refresh keeps for its log line.
 _UNMATCHED_SAMPLE = 5
+# The sales VAT book view's two variable filters on the issue date. Bejerman has
+# no "not applicable" for them over the SDK: both must be sent, each by the name
+# Queries shows in its parameters dialog, as DD/MM/YYYY. One `Campo` for both sets
+# both to the last value, and the column's internal name is silently ignored.
+UNTAXED_DATE_FILTERS = ("Fecha_Emision >=", "Fecha_Emision <=")
+UNTAXED_WINDOW_DAYS = 365
 
 
 def _resolve_debt_keys(
@@ -447,6 +453,20 @@ def _untaxed_voucher_key(cell: Any) -> tuple[str, str] | None:
     return "|".join((tipo, punto, letra, numero)), customer_code
 
 
+def untaxed_window_start(today: date) -> date:
+    """First issue date of the sales VAT book window that ends ``today``."""
+    return today - timedelta(days=UNTAXED_WINDOW_DAYS)
+
+
+def untaxed_date_filter(today: date) -> list[dict[str, str]]:
+    """Variable filters of the sales VAT book view: the last 365 days to today."""
+    days = (untaxed_window_start(today), today)
+    return [
+        {"Campo": name, "Valor": day.strftime("%d/%m/%Y")}
+        for name, day in zip(UNTAXED_DATE_FILTERS, days, strict=True)
+    ]
+
+
 def map_untaxed_shares(payload: Any) -> dict[tuple[str, str], float]:
     """Untaxed share of each sales VAT book voucher: (NETO + NGEX) / TOTAL.
 
@@ -486,33 +506,47 @@ def apply_untaxed(
     entries: list[dict[str, Any]],
     shares: Mapping[tuple[str, str], float] | None,
     stats: dict[str, Any] | None = None,
+    since: date | None = None,
 ) -> list[dict[str, Any]]:
-    """Set ``amount_untaxed`` and ``balance_untaxed`` on open-debt entries.
+    """Open-debt entries kept by the sales VAT book, with their untaxed amounts.
 
-    Both are the voucher's untaxed share of its amount and of its open
-    balance, so a partly paid voucher's open untaxed amount is proportional.
-    A quotation is untaxed (share 1), and so is every entry when ``shares`` is
-    None (no VAT book view). An invoice the VAT book does not list keeps its
-    total; it is counted in ``stats["untaxed_unmatched"]`` and its id, for the
-    first few, kept in ``stats["untaxed_unmatched_ids"]``.
+    ``amount_untaxed`` and ``balance_untaxed`` are the voucher's untaxed share of
+    its amount and of its open balance, so a partly paid voucher's open untaxed
+    amount is proportional. When ``shares`` is None (no VAT book view) every entry
+    is kept with its total. Otherwise an invoice the VAT book does not list is left
+    out, counted in ``stats["untaxed_unmatched"]`` with its id, for the first few,
+    in ``stats["untaxed_unmatched_ids"]``. A quotation is untaxed (share 1) and is
+    kept only when issued on or after ``since``; older ones are counted in
+    ``stats["quotations_outside_window"]``.
     """
+    kept = []
     for entry in entries:
         share = 1.0
-        if shares is not None and entry["document_kind"] != "quotation":
+        if shares is not None and entry["document_kind"] == "quotation":
+            if since is not None and entry["issue_date"] < since.isoformat():
+                _count(stats, "quotations_outside_window")
+                continue
+        elif shares is not None:
             found = shares.get((entry["external_invoice_id"], entry["customer_code"]))
             if found is None:
                 _count_untaxed_unmatched(stats, entry["external_invoice_id"])
-            else:
-                share = found
+                continue
+            share = found
         entry["amount_untaxed"] = round(entry["amount"] * share, 2)
         entry["balance_untaxed"] = round(entry["balance"] * share, 2)
-    return entries
+        kept.append(entry)
+    return kept
+
+
+def _count(stats: dict[str, Any] | None, name: str) -> None:
+    if stats is not None:
+        stats[name] = stats.get(name, 0) + 1
 
 
 def _count_untaxed_unmatched(stats: dict[str, Any] | None, external_id: str) -> None:
     if stats is None:
         return
-    stats["untaxed_unmatched"] = stats.get("untaxed_unmatched", 0) + 1
+    _count(stats, "untaxed_unmatched")
     sample = stats.setdefault("untaxed_unmatched_ids", [])
     if len(sample) < _UNMATCHED_SAMPLE:
         sample.append(external_id)

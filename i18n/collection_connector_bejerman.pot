@@ -674,9 +674,9 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_view
 msgid ""
-"Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA CRIS). It"
-" must list every open invoice: one it does not list keeps commission on its "
-"total."
+"Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA CRIS), "
+"read for the last 365 days. Only the open invoices it lists, and the "
+"quotations of the same 365 days, are kept as debt."
 msgstr ""
 
 #. module: collection_connector_bejerman
