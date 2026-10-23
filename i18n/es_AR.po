@@ -161,19 +161,9 @@ msgid "Bejerman Quotation Kinds"
 msgstr "Clases de presupuesto de Bejerman"
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_scenario
-msgid "Bejerman Seller Scenario"
-msgstr "Escenario de vendedores de Bejerman"
-
-#. module: collection_connector_bejerman
 #: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_seller
 msgid "Bejerman Seller Snapshot"
 msgstr "Instantánea de vendedores de Bejerman"
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_view
-msgid "Bejerman Seller View"
-msgstr "Vista de vendedores de Bejerman"
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_ids

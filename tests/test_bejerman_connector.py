@@ -136,8 +136,6 @@ _BEJERMAN_CONFIG_FIELDS = (
     "bejerman_untaxed_view",
     "bejerman_quotation_kinds",
 )
-# Legacy stored fields are unused and hidden: still admin-only.
-_UNUSED_SELLER_FIELDS = ("bejerman_seller_scenario", "bejerman_seller_view")
 _LEAK_TOKENS = (
     _ERROR_MSG,
     _SESSION_TOKEN,
@@ -1098,7 +1096,7 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             "bejerman_untaxed_view",
             "bejerman_quotation_kinds",
         }
-        for name in _BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS:
+        for name in _BEJERMAN_CONFIG_FIELDS:
             groups = set(Connector._fields[name].groups.split(","))
             expected = {"base.group_system"}
             if name in manager_fields:
@@ -1151,17 +1149,12 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
         )
         admin_fields = Connector.with_user(system).fields_get()
         user_fields = Connector.with_user(internal).fields_get()
-        for name in _BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS:
+        for name in _BEJERMAN_CONFIG_FIELDS:
             self.assertIn(name, admin_fields)
             self.assertNotIn(name, user_fields)
 
         admin_arch = self._form_arch_for(system)
         user_arch = self._form_arch_for(internal)
-        for name in _UNUSED_SELLER_FIELDS:
-            self.assertFalse(
-                admin_arch.xpath(f"//field[@name='{name}']"),
-                f"the form must not show the unused {name}",
-            )
         admin_button = admin_arch.xpath("//button[@name='test_connection']")
         self.assertTrue(admin_button, "admin form must expose Bejerman Test Connection")
         self.assertFalse(
@@ -1190,9 +1183,7 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             self.assertEqual(
                 len(manager_arch.xpath(f"//field[@name='{name}']")), 1, name
             )
-        for name in (
-            set(_BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS) - manager_fields
-        ):
+        for name in set(_BEJERMAN_CONFIG_FIELDS) - manager_fields:
             self.assertFalse(manager_arch.xpath(f"//field[@name='{name}']"), name)
 
         connector = self._make_connector()

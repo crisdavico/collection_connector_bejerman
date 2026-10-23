@@ -155,18 +155,8 @@ msgid "Bejerman Quotation Kinds"
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_scenario
-msgid "Bejerman Seller Scenario"
-msgstr ""
-
-#. module: collection_connector_bejerman
 #: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_seller
 msgid "Bejerman Seller Snapshot"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_seller_view
-msgid "Bejerman Seller View"
 msgstr ""
 
 #. module: collection_connector_bejerman
