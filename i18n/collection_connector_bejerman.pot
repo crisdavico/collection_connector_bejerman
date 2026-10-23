@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 12:53+0000\n"
-"PO-Revision-Date: 2026-10-19 12:53+0000\n"
+"POT-Creation-Date: 2026-10-23 17:51+0000\n"
+"PO-Revision-Date: 2026-10-23 17:51+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -85,11 +85,6 @@ msgid "Amount"
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__amount_untaxed
-msgid "Amount Untaxed"
-msgstr ""
-
-#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_attachment_count
 msgid "Attachment Count"
 msgstr ""
@@ -97,11 +92,6 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__balance
 msgid "Balance"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__balance_untaxed
-msgid "Balance Untaxed"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -135,11 +125,6 @@ msgid "Bejerman Deadline (s)"
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_filter_field
-msgid "Bejerman Debt Filter Field"
-msgstr ""
-
-#. module: collection_connector_bejerman
 #: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_debt
 msgid "Bejerman Open Debt Snapshot"
 msgstr ""
@@ -150,8 +135,8 @@ msgid "Bejerman Password"
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_quotation_kinds
-msgid "Bejerman Quotation Kinds"
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_profile
+msgid "Bejerman Profile"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -322,11 +307,6 @@ msgid "Customer code must be unique per connector."
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_scenario
-msgid "Debt Scenario"
-msgstr ""
-
-#. module: collection_connector_bejerman
 #. odoo-python
 #: code:addons/collection_connector_bejerman/models/collection_connector.py:0
 msgid "Debt Snapshot Refreshed"
@@ -335,11 +315,6 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
 msgid "Debt Sync"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_debt_view
-msgid "Debt View"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -630,13 +605,6 @@ msgid "Pick the user to enable."
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_debt_filter_field
-msgid ""
-"Query-view column (e.g. CVE_CODCLI) that filters the debt view by customer. "
-"When set, debt is read live per customer instead of from the snapshot."
-msgstr ""
-
-#. module: collection_connector_bejerman
 #: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_debt__document_kind__quotation
 msgid "Quotation"
 msgstr ""
@@ -659,22 +627,6 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_has_sms_error
 msgid "SMS Delivery error"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_view
-msgid ""
-"Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA CRIS), "
-"read for the last 365 days. Only the open invoices it lists, and the "
-"quotations of the same 365 days, are kept as debt."
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_scenario
-msgid ""
-"Scenario of the sales VAT book query view that gives each invoice's untaxed "
-"amount (NETO + NGEX). Leave it and the view empty to pay commission on the "
-"total."
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -711,6 +663,11 @@ msgid "Sellers"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_profile__standard
+msgid "Standard"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__activity_state
 msgid ""
 "Status based on activities\n"
@@ -722,6 +679,14 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__data
 msgid "The Bejerman answer could not be read"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#. odoo-python
+#: code:addons/collection_connector_bejerman/models/collection_connector.py:0
+msgid ""
+"The Bejerman connector has no debt source. Choose the Bejerman profile of "
+"its customer."
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -848,16 +813,6 @@ msgid "Unexpected error"
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_scenario
-msgid "Untaxed Scenario"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_view
-msgid "Untaxed View"
-msgstr ""
-
-#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__user_id
 msgid "User"
 msgstr ""
@@ -875,18 +830,15 @@ msgid ""
 msgstr ""
 
 #. module: collection_connector_bejerman
-#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__website_message_ids
-msgid "Website Messages"
-msgstr ""
-
-#. module: collection_connector_bejerman
-#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__website_message_ids
-msgid "Website communication history"
-msgstr ""
-
-#. module: collection_connector_bejerman
 #: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_snapshot_started_at
 msgid "When the last successful refresh started reading Bejerman."
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_profile
+msgid ""
+"Which customer-specific addon reads this connector's debt. Standard reads "
+"customers only and has no debt source."
 msgstr ""
 
 #. module: collection_connector_bejerman
