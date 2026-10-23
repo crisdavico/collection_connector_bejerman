@@ -14,11 +14,9 @@ from .common import (
     _SESSION_TOKEN,
     _SOAPACTION_CIERRE,
     _WS_URL,
+    BejermanTestMixin,
     _call_body,
     _call_soap_action,
-)
-from .test_bejerman_connector import (
-    BejermanTestMixin,
     _patch_httpx,
 )
 
