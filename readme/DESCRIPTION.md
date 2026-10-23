@@ -39,6 +39,21 @@ company's Collections Managers. Before the first refresh, `list_customers` and
 `get_customer_debt` fail closed with the generic "not configured" error rather than
 downloading inline.
 
+Untaxed amount (seller commission base): when **Untaxed Scenario** and **Untaxed View**
+are set (a sales VAT book query view, e.g. `Libro IVA Ventas/IA CRIS`; managers can edit
+both, setting only one is a configuration error), the refresh reads that view in the
+same session, after the debt view. Each voucher is matched on its internal type
+(`COMP_CODINT`, not `COMP_COD`), point of sale, letter and number (from `COMPROBANTE`)
+and customer (`CLIENTE_COD`); its untaxed share is `(NETO + NGEX) / TOTAL`, so taxes and
+perceptions are left out. Every open debt row stores `amount_untaxed` and
+`balance_untaxed`, the share of its amount and of its open balance, and
+`get_customer_debt` sends `amount_untaxed` to `collection`, which pays the seller's
+commission on that share of what was collected. Quotations, and every row when the view
+is not set, keep the total. An invoice the view does not list keeps the total too; the
+refresh logs how many and a few of their ids, so the view must cover every open invoice.
+A failed read of the view fails the refresh like the debt view. The live path
+(`bejerman_debt_filter_field` set) does not read the view and sends the total.
+
 Sync status: the connector form's **Debt Sync** tab (collections managers and
 administrators) shows when the last successful refresh started and ended, the row counts
 (including the rows skipped because their balance or amount could not be read: they are

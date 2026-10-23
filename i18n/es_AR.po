@@ -91,6 +91,11 @@ msgid "Amount"
 msgstr "Importe"
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__amount_untaxed
+msgid "Amount Untaxed"
+msgstr "Importe sin impuestos"
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_attachment_count
 msgid "Attachment Count"
 msgstr "Número de archivos adjuntos"
@@ -99,6 +104,11 @@ msgstr "Número de archivos adjuntos"
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__balance
 msgid "Balance"
 msgstr "Saldo"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__balance_untaxed
+msgid "Balance Untaxed"
+msgstr "Saldo sin impuestos"
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__type__bejerman
@@ -681,6 +691,28 @@ msgid "SMS Delivery error"
 msgstr "Error de envío del SMS"
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_view
+msgid ""
+"Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA CRIS). It"
+" must list every open invoice: one it does not list keeps commission on its "
+"total."
+msgstr ""
+"Vista de consulta del Libro IVA Ventas, como Consulta/Vista (p. ej. Libro "
+"IVA Ventas/IA CRIS). Debe incluir todas las facturas abiertas: una que no "
+"incluya mantiene la comisión sobre su total."
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_scenario
+msgid ""
+"Scenario of the sales VAT book query view that gives each invoice's untaxed "
+"amount (NETO + NGEX). Leave it and the view empty to pay commission on the "
+"total."
+msgstr ""
+"Escenario de la vista de consulta del Libro IVA Ventas que da el importe sin"
+" impuestos de cada factura (NETO + NGEX). Déjelo vacío, junto con la vista, "
+"para pagar la comisión sobre el total."
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_failure_count
 msgid "Scheduled refreshes that failed since the last successful one."
 msgstr "Actualizaciones programadas que fallaron desde la última exitosa."
@@ -867,6 +899,16 @@ msgstr "Tipo de la actividad de excepción registrada."
 #: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector__bejerman_last_failure_reason__other
 msgid "Unexpected error"
 msgstr "Error inesperado"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_scenario
+msgid "Untaxed Scenario"
+msgstr "Escenario sin impuestos"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_view
+msgid "Untaxed View"
+msgstr "Vista sin impuestos"
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__user_id

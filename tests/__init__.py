@@ -12,3 +12,4 @@ from . import test_bejerman_session_retry
 from . import test_bejerman_snapshot
 from . import test_bejerman_sync_status
 from . import test_bejerman_test_connection
+from . import test_bejerman_untaxed

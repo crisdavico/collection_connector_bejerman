@@ -35,6 +35,10 @@ class CollectionConnectorBejermanDebt(models.Model):
     due_date = fields.Date()
     amount = fields.Float(digits=(16, 2))
     balance = fields.Float(digits=(16, 2))
+    # Untaxed share (NETO + NGEX) of amount and balance, from the sales VAT book
+    # view; equal to them for quotations and invoices that view does not list.
+    amount_untaxed = fields.Float(digits=(16, 2))
+    balance_untaxed = fields.Float(digits=(16, 2))
     document_kind = fields.Selection(
         selection=[("invoice", "Invoice"), ("quotation", "Quotation")],
         required=True,

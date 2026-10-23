@@ -85,6 +85,11 @@ msgid "Amount"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__amount_untaxed
+msgid "Amount Untaxed"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_attachment_count
 msgid "Attachment Count"
 msgstr ""
@@ -92,6 +97,11 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__balance
 msgid "Balance"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__balance_untaxed
+msgid "Balance Untaxed"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -662,6 +672,22 @@ msgid "SMS Delivery error"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_view
+msgid ""
+"Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA CRIS). It"
+" must list every open invoice: one it does not list keeps commission on its "
+"total."
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_scenario
+msgid ""
+"Scenario of the sales VAT book query view that gives each invoice's untaxed "
+"amount (NETO + NGEX). Leave it and the view empty to pay commission on the "
+"total."
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_failure_count
 msgid "Scheduled refreshes that failed since the last successful one."
 msgstr ""
@@ -832,6 +858,16 @@ msgid "Unexpected error"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_scenario
+msgid "Untaxed Scenario"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_untaxed_view
+msgid "Untaxed View"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__user_id
 msgid "User"
 msgstr ""
@@ -846,6 +882,16 @@ msgstr ""
 msgid ""
 "Wall-clock limit of one Bejerman session (login, reads, retries and close). "
 "A download still running past it is aborted."
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__website_message_ids
+msgid "Website Messages"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__website_message_ids
+msgid "Website communication history"
 msgstr ""
 
 #. module: collection_connector_bejerman

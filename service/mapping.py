@@ -223,6 +223,19 @@ _AMBIGUOUS = object()
 # The voucher seller carried by every `Saldos al dia` row, open or not.
 _SELLER_ALIASES = {"codigo": "CVEVEN_COD", "nombre": "VEN_DESC"}
 
+# Real sales VAT book rows (`Libro IVA Ventas/<view>`): the internal voucher type
+# (`COMP_CODINT`, e.g. FHK) is the debt view's `CVETCO_COD`; `COMP_COD` is not.
+_UNTAXED_ALIASES = {
+    "tipo": "COMP_CODINT",
+    "comprobante": "COMPROBANTE",
+    "cliente": "CLIENTE_COD",
+    "neto": "NETO",
+    "ngex": "NGEX",
+    "total": "TOTAL",
+}
+# How many unmatched invoice ids a refresh keeps for its log line.
+_UNMATCHED_SAMPLE = 5
+
 
 def _resolve_debt_keys(
     keys: Iterable[Any], aliases: Mapping[str, str] = _DEBT_ALIASES
@@ -243,12 +256,13 @@ def _resolve_debt_keys(
 def _row_cells(
     row: Mapping[str, Any],
     cache: dict[tuple[Any, ...], dict[str, Any]],
+    aliases: Mapping[str, str] = _DEBT_ALIASES,
 ) -> Any:
-    """Cell reader for one debt row, or None when an alias is ambiguous."""
+    """Cell reader for one query row, or None when an alias is ambiguous."""
     shape = tuple(row)
     keys = cache.get(shape)
     if keys is None:
-        keys = cache[shape] = _resolve_debt_keys(shape)
+        keys = cache[shape] = _resolve_debt_keys(shape, aliases)
     if _AMBIGUOUS in keys.values():
         return None
 
@@ -412,6 +426,98 @@ def map_customer_credits(
     return {code: round(total, 2) for code, total in totals.items()}
 
 
+def _untaxed_voucher_key(cell: Any) -> tuple[str, str] | None:
+    """(debt external invoice id, customer code) of a VAT book row, or None.
+
+    ``COMPROBANTE`` reads ``A 00004-00056383``, or ``00020-00130206`` when the
+    voucher has no letter (the debt view's letter is then blank too).
+    """
+    tipo = _text(cell("tipo"))
+    customer_code = trim_code(cell("cliente"))
+    parts = _text(cell("comprobante")).split()
+    if len(parts) == 2:
+        letra, numbers = parts
+    elif len(parts) == 1:
+        letra, numbers = "", parts[0]
+    else:
+        return None
+    punto, _sep, numero = numbers.rpartition("-")
+    if not (tipo and numero and customer_code):
+        return None
+    return "|".join((tipo, punto, letra, numero)), customer_code
+
+
+def map_untaxed_shares(payload: Any) -> dict[tuple[str, str], float]:
+    """Untaxed share of each sales VAT book voucher: (NETO + NGEX) / TOTAL.
+
+    Keyed like the debt: (external invoice id, customer code). Rows of one
+    voucher add up (one row per VAT rate). A blank NGEX is no exempt amount. A
+    voucher with an unreadable NETO or TOTAL, a zero total, or a share outside
+    (0, 1] gets no share, so its debt keeps the total.
+    """
+    cache: dict[tuple[Any, ...], dict[str, Any]] = {}
+    sums: dict[tuple[str, str], tuple[float, float]] = {}
+    unusable: set[tuple[str, str]] = set()
+    for row in as_rows(payload):
+        cell = _row_cells(row, cache, _UNTAXED_ALIASES)
+        if cell is None:
+            continue
+        key = _untaxed_voucher_key(cell)
+        if key is None:
+            continue
+        neto = _amount(cell("neto"))
+        total = _amount(cell("total"))
+        if neto is None or total is None:
+            unusable.add(key)
+            continue
+        untaxed, gross = sums.get(key, (0.0, 0.0))
+        sums[key] = (untaxed + neto + (_amount(cell("ngex")) or 0.0), gross + total)
+    shares: dict[tuple[str, str], float] = {}
+    for key, (untaxed, gross) in sums.items():
+        if key in unusable or not gross:
+            continue
+        share = untaxed / gross
+        if 0.0 < share <= 1.0:
+            shares[key] = share
+    return shares
+
+
+def apply_untaxed(
+    entries: list[dict[str, Any]],
+    shares: Mapping[tuple[str, str], float] | None,
+    stats: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Set ``amount_untaxed`` and ``balance_untaxed`` on open-debt entries.
+
+    Both are the voucher's untaxed share of its amount and of its open
+    balance, so a partly paid voucher's open untaxed amount is proportional.
+    A quotation is untaxed (share 1), and so is every entry when ``shares`` is
+    None (no VAT book view). An invoice the VAT book does not list keeps its
+    total; it is counted in ``stats["untaxed_unmatched"]`` and its id, for the
+    first few, kept in ``stats["untaxed_unmatched_ids"]``.
+    """
+    for entry in entries:
+        share = 1.0
+        if shares is not None and entry["document_kind"] != "quotation":
+            found = shares.get((entry["external_invoice_id"], entry["customer_code"]))
+            if found is None:
+                _count_untaxed_unmatched(stats, entry["external_invoice_id"])
+            else:
+                share = found
+        entry["amount_untaxed"] = round(entry["amount"] * share, 2)
+        entry["balance_untaxed"] = round(entry["balance"] * share, 2)
+    return entries
+
+
+def _count_untaxed_unmatched(stats: dict[str, Any] | None, external_id: str) -> None:
+    if stats is None:
+        return
+    stats["untaxed_unmatched"] = stats.get("untaxed_unmatched", 0) + 1
+    sample = stats.setdefault("untaxed_unmatched_ids", [])
+    if len(sample) < _UNMATCHED_SAMPLE:
+        sample.append(external_id)
+
+
 def map_debt_sellers(payload: Any) -> list[dict[str, str]]:
     """Unique voucher sellers over every debt row, closed rows included.
 
@@ -456,6 +562,7 @@ def entry_to_invoice(
         "due_date": entry["due_date"],
         "amount": entry["amount"],
         "balance": entry["balance"],
+        "amount_untaxed": entry.get("amount_untaxed", entry["amount"]),
         "state": debt_state(entry["due_date"], today),
         "document_kind": entry["document_kind"],
     }
