@@ -22,7 +22,9 @@ MOVED_FIELDS = (
 def migrate(cr, version):
     if not version:
         return
-    # A pair the Kras addon already holds (installed in the same run) stays put.
+    # When the Kras addon already holds an xmlid of the same name (it was
+    # installed first), the base's row is left alone; the normal end-of-upgrade
+    # cleanup removes it, and the field stays the Kras addon's.
     cr.execute(
         """
         UPDATE ir_model_data base
@@ -34,6 +36,7 @@ def migrate(cr, version):
                 SELECT 1
                   FROM ir_model_data kras
                  WHERE kras.module = 'collection_connector_bejerman_kras'
+                   AND kras.model = 'ir.model.fields'
                    AND kras.name = base.name
            )
         """,

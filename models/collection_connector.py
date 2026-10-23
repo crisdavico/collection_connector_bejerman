@@ -382,7 +382,8 @@ class CollectionConnectorBejerman(models.Model):
         raise error from None
 
     @api.private
-    def _bejerman_no_debt_source(self):
+    def _bejerman_raise_no_debt_source(self):
+        """Always raises: the standard profile has no debt source."""
         raise UserError(
             _(
                 "The Bejerman connector has no debt source. "
@@ -398,19 +399,21 @@ class CollectionConnectorBejerman(models.Model):
         profile has no debt source, so its refresh fails as a configuration error.
         """
         self.ensure_one()
-        self._bejerman_no_debt_source()
+        self._bejerman_raise_no_debt_source()
 
     @api.private
     def _bejerman_read_snapshot(self, client, today, stats):
         """Read ``(customers, debts, sellers)`` inside the open Bejerman session.
 
-        Profile addons override it. Customers are ``mapping.map_customer_rows``
+        The standard profile has no debt source, so this base version always
+        raises; profile addons override it and return what follows. Customers
+        are ``mapping.map_customer_rows``
         rows, optionally with ``credit_total``; debts and sellers are the field
         values of the debt and seller snapshot rows. Rows skipped because an
         amount could not be read are counted in ``stats["unparsable_amounts"]``.
         """
         self.ensure_one()
-        self._bejerman_no_debt_source()
+        self._bejerman_raise_no_debt_source()
 
     @api.private
     def _bejerman_refresh_snapshot(self):
