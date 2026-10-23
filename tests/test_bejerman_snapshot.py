@@ -450,7 +450,7 @@ class TestBejermanRelease(TransactionCase):
         read time, so no data migration is required.
         """
         manifest = load_manifest("collection_connector_bejerman")
-        self.assertEqual(manifest["version"], "19.0.1.4.0")
+        self.assertEqual(manifest["version"], "19.0.1.5.0")
         addon = Path(__file__).resolve().parent.parent
         self.assertFalse((addon / "migrations").exists())
 

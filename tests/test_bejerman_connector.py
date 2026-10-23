@@ -110,6 +110,8 @@ _SELLER_SCENARIO = "VENDEDORES"
 _SELLER_VIEW = "Vendedores"
 _DEBT_SCENARIO = "CTACTE"
 _DEBT_VIEW = "Saldos"
+_UNTAXED_SCENARIO = "IVAVENTAS"
+_UNTAXED_VIEW = "Libro IVA Ventas/IA CRIS"
 _QUERY_PREFIX = "GENERATEDPREFIX"
 _UNAVAILABLE = "The requested connector operation is not available."
 _NOT_CONFIGURED = "The collection connector is not configured."
@@ -130,6 +132,8 @@ _BEJERMAN_CONFIG_FIELDS = (
     "bejerman_debt_scenario",
     "bejerman_debt_view",
     "bejerman_debt_filter_field",
+    "bejerman_untaxed_scenario",
+    "bejerman_untaxed_view",
     "bejerman_quotation_kinds",
 )
 # Legacy stored fields are unused and hidden: still admin-only.
@@ -169,6 +173,7 @@ _INVOICE_KEYS = frozenset(
         "due_date",
         "amount",
         "balance",
+        "amount_untaxed",
         "state",
         "document_kind",
     }
@@ -266,6 +271,43 @@ _DEBT_ROWS = [
         "FHK", "00004", "A", "00001235", "000124", "2026-05-01T00:00:00.000Z", 999
     ),
 ]
+_UNTAXED_PREFIX = "STA_LIBROIVAVENTAS_2_001"
+
+
+def _untaxed_row(
+    codint, comprobante, codcli, neto, ngex, total, prefix=_UNTAXED_PREFIX
+):
+    """Return a row shaped like the real `Libro IVA Ventas/IA CRIS` view.
+
+    Taxes and perceptions fill the gap between the untaxed amount and the total.
+    """
+    taxes = round(float(total) - float(neto) - float(ngex), 2)
+    return {
+        f"{prefix}FECHA_EMISION": "2026-01-01T00:00:00.000Z",
+        f"{prefix}FECHA_CONTAB": "2026-01-01T00:00:00.000Z",
+        f"{prefix}CLIENTE_COD": codcli,
+        f"{prefix}CUIT": "20-12345678-9",
+        f"{prefix}TOTAL": float(total),
+        f"{prefix}NETO": float(neto),
+        f"{prefix}IVA": taxes,
+        f"{prefix}NGEX": float(ngex),
+        f"{prefix}CVEPRE_COD": "KRAS",
+        f"{prefix}PERIVA": 0.0,
+        f"{prefix}PERIIBB_PBA": 0.0,
+        f"{prefix}PERIIBB_CABA": 0.0,
+        f"{prefix}PERGAN": 0.0,
+        f"{prefix}CLIENTE": "SYNTHETIC CUSTOMER",
+        f"{prefix}COMPROBANTE": comprobante,
+        f"{prefix}COMP_COD": "FC",
+        f"{prefix}COMP_CODINT": codint,
+    }
+
+
+# The sales VAT book row of `_DEBT_ROWS`' partly paid invoice: untaxed 80 %.
+_UNTAXED_ROWS = [
+    _untaxed_row("FHK", "A 00004-00001234", "000123", 700, 100, 1000),
+]
+
 _PREFIX_DEBT = [
     _debt_row(
         "FHK",
@@ -359,6 +401,7 @@ def _erp_post(
     pack = (payloads_by_url or {}).get(url) or (payloads_by_url or {}).get("*") or {}
     clientes = pack.get("clientes", _CLIENTES)
     debts = pack.get("debts", _DEBT_ROWS)
+    untaxed = pack.get("untaxed", _UNTAXED_ROWS)
     fail = set(fail)
     if "EFlexSDK_WSCierreProceso" in body:
         return _xml_response(_CIERRE_OK)
@@ -374,6 +417,10 @@ def _erp_post(
         params = _parametros_json(body) or []
         view = params[1] if len(params) > 1 else ""
         scenario = params[0] if params else ""
+        if view == _UNTAXED_VIEW or scenario == _UNTAXED_SCENARIO:
+            if "untaxed_view" in fail:
+                return _xml_response(_EJECUTAR_ERROR)
+            return _xml_response(_ejecutar_ok(untaxed, double_encoded=True))
         is_debt = view == _DEBT_VIEW or scenario == _DEBT_SCENARIO
         if is_debt and "debt_view" in fail:
             return _xml_response(_EJECUTAR_ERROR)
@@ -1047,6 +1094,8 @@ class TestBejermanConnector(BejermanTestMixin, TransactionCase):
             "bejerman_debt_scenario",
             "bejerman_debt_view",
             "bejerman_debt_filter_field",
+            "bejerman_untaxed_scenario",
+            "bejerman_untaxed_view",
             "bejerman_quotation_kinds",
         }
         for name in _BEJERMAN_CONFIG_FIELDS + _UNUSED_SELLER_FIELDS:

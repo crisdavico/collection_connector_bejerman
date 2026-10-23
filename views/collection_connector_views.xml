@@ -82,6 +82,16 @@
           groups="base.group_system,collection.group_collection_manager"
         />
                 <field
+          name="bejerman_untaxed_scenario"
+          invisible="type != 'bejerman'"
+          groups="base.group_system,collection.group_collection_manager"
+        />
+                <field
+          name="bejerman_untaxed_view"
+          invisible="type != 'bejerman'"
+          groups="base.group_system,collection.group_collection_manager"
+        />
+                <field
           name="bejerman_quotation_kinds"
           invisible="type != 'bejerman'"
           groups="base.group_system,collection.group_collection_manager"

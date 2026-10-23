@@ -93,6 +93,8 @@ def _invoice_payload(debt, today):
         "due_date": due_date,
         "amount": debt.amount,
         "balance": debt.balance,
+        # Rows stored before the untaxed amount existed hold 0: their total.
+        "amount_untaxed": debt.amount_untaxed or debt.amount,
         "state": mapping.debt_state(due_date, today),
         "document_kind": debt.document_kind,
     }
@@ -193,6 +195,20 @@ class CollectionConnectorBejerman(models.Model):
         help="Query-view column (e.g. CVE_CODCLI) that filters the debt view by "
         "customer. When set, debt is read live per customer instead of from the "
         "snapshot.",
+        groups="base.group_system,collection.group_collection_manager",
+    )
+    bejerman_untaxed_scenario = fields.Char(
+        string="Untaxed Scenario",
+        help="Scenario of the sales VAT book query view that gives each invoice's "
+        "untaxed amount (NETO + NGEX). Leave it and the view empty to pay "
+        "commission on the total.",
+        groups="base.group_system,collection.group_collection_manager",
+    )
+    bejerman_untaxed_view = fields.Char(
+        string="Untaxed View",
+        help="Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA "
+        "CRIS). It must list every open invoice: one it does not list keeps "
+        "commission on its total.",
         groups="base.group_system,collection.group_collection_manager",
     )
     # Snapshot bookkeeping is not sensitive and must stay readable by internal
@@ -439,17 +455,46 @@ class CollectionConnectorBejerman(models.Model):
             )
 
     @api.private
+    def _bejerman_untaxed_query(self):
+        """(scenario, view) of the sales VAT book view, or None when not set.
+
+        Optional: without it every debt keeps its total as the untaxed amount.
+        Setting only one of the two is a configuration error.
+        """
+        self.ensure_one()
+        names = ("bejerman_untaxed_scenario", "bejerman_untaxed_view")
+        values = [(self[name] or "").strip() for name in names]
+        if not any(values):
+            return None
+        missing = [
+            self._fields[name].string
+            for name, value in zip(names, values, strict=True)
+            if not value
+        ]
+        if missing:
+            raise UserError(
+                _(
+                    "The Bejerman connector is not configured. "
+                    "Missing settings: %(settings)s.",
+                    settings=", ".join(missing),
+                )
+            )
+        return tuple(values)
+
+    @api.private
     def _bejerman_refresh_snapshot(self):
         """Download customers and the debt view, then replace this connector's snapshot.
 
         The ERP is read first, inside one Registro -> Cierre session, and nothing is
         written until every answer mapped cleanly; the swap itself is one savepoint.
         The sellers come from the same debt view download (every row, open or not),
-        so listing sellers never costs a Bejerman request. Any failure keeps the
-        previous snapshot.
+        so listing sellers never costs a Bejerman request. When the sales VAT book
+        view is set, it is read in the same session for each invoice's untaxed
+        amount. Any failure keeps the previous snapshot.
         """
         self.ensure_one()
         self._bejerman_require_debt_query()
+        untaxed_query = self._bejerman_untaxed_query()
         started_at = fields.Datetime.now()
         stats = {}
         kinds = self._bejerman_quotation_kinds()
@@ -470,9 +515,18 @@ class CollectionConnectorBejerman(models.Model):
                     for row in customers
                 ]
                 sellers = mapping.map_debt_sellers(debt_rows)
+                # The debt view is large: free it before the next download.
+                del debt_rows
+                shares = None
+                if untaxed_query:
+                    shares = mapping.map_untaxed_shares(
+                        client.queries.get_json_query_view(*untaxed_query)
+                    )
+                mapping.apply_untaxed(debts, shares, stats)
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
         skipped = self._bejerman_log_skipped_rows(stats)
+        self._bejerman_log_untaxed_unmatched(stats)
         self._bejerman_replace_snapshot(
             customers, debts, sellers, started_at, skipped=skipped
         )
@@ -491,6 +545,24 @@ class CollectionConnectorBejerman(models.Model):
                 skipped,
             )
         return skipped
+
+    @api.private
+    def _bejerman_log_untaxed_unmatched(self, stats):
+        """Log the open invoices the sales VAT book view does not list.
+
+        Their commission is paid on the total, so the operator can widen the view.
+        """
+        unmatched = stats.get("untaxed_unmatched", 0)
+        if unmatched:
+            _logger.warning(
+                "Bejerman debt of connector %s: %s open invoices have no untaxed "
+                "amount in the sales VAT book view, their commission uses the "
+                "total (e.g. %s)",
+                self.id,
+                unmatched,
+                ", ".join(stats.get("untaxed_unmatched_ids") or ()),
+            )
+        return unmatched
 
     @api.model
     @api.private
