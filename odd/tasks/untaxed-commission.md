@@ -38,11 +38,12 @@ commission. `customer_debt` (MCP) does not expose the new field.
 
 ## Tasks
 
-- [ ] T1 S1-S5, S8 — `collection_connector_bejerman`: net view settings, IA CRIS mapping,
-  snapshot `amount_untaxed`/`balance_untaxed`, payload `amount_untaxed` — inline — commit:
-- [ ] T2 S6-S7 — `collection`: line `invoice_amount_untaxed` from the connector, commission
-  on the untaxed share — inline — commit:
-- [ ] T3 Real refresh on local `devel`, hand-check commissions — inline
+- [x] T1 S1-S5, S8 — `collection_connector_bejerman`: untaxed view settings, IA CRIS
+  mapping, snapshot `amount_untaxed`/`balance_untaxed`, payload `amount_untaxed` — inline
+  (no writer trigger: one unit, read inline) — commit `6c4fb6c`
+- [x] T2 S6-S7 — `collection`: line `invoice_amount_untaxed` from the connector, commission
+  on the untaxed share — inline — commit `b54f452` (collection repo)
+- [x] T3 Real refresh on local `devel`, hand-check commissions — inline
 
 ## Log
 
@@ -60,3 +61,32 @@ commission. `customer_debt` (MCP) does not expose the new field.
   commission = applied × untaxed/amount × % (confirmed). Plan approved: "yes, go ahead".
 - L4 Naming: `amount_untaxed` (Odoo convention) instead of "net", because `summary.net_total`
   already means "net of credit notes".
+- L5 T1 evidence: RED 12 errors of 11 new tests (missing functions/fields); GREEN 11/11.
+  Full module on `devel`: 164/166; the 2 failures
+  (`TestBejermanRefreshEntryPoints.test_cron_refreshes_active_bejerman_connectors_in_isolation`,
+  `test_cron_survives_a_failure_notice_it_cannot_post`) also fail on the base commit
+  (stash run): `devel` holds a real active connector named "Bejerman". Review assess on
+  `6c4fb6c`: medium, `under_budget` (pending in the slice).
+- L6 `devel` has `collection.mcp_trusted_seller_header` set, so in-process MCP tests of
+  `collection` fail there at baseline; full suites run on a fresh `untaxed_check` DB.
+
+- L7 T2 evidence: RED (KeyError `invoice_amount_untaxed` / `amount_untaxed`); fresh DB
+  `untaxed_check`: both suites 1486 tests, then `collection` 1320/1320 after updating the
+  two connector key-set tests for the new `amount_untaxed` key; the MCP `customer_debt`
+  exact-key test passes unchanged (field popped). The 2 Bejerman cron failures do not
+  occur on the fresh DB.
+- L8 T3 evidence (`devel`, connector 4520 set to `TEST` + `Libro IVA Ventas/IA CRIS`):
+  1087 open rows, 637 invoices, 186 with untaxed < total (36 partial); 449 invoices
+  unmatched (IA CRIS still covers Sep 2026 only; logged with sample ids). Hand check
+  `FHK|00004|B|00028984`: 832,048.72 → untaxed 687,643.57 (÷1.21); balance 81,799.15 →
+  67,602.60; commission at 5% on that balance = 3,380.13.
+- L9 Native review `collection` b54f452 (risk + reliability, consent granted): approved,
+  acknowledged. Advisory: credit-note lines would keep the gross base (not reachable: lines
+  are outstanding invoices, `amount_applied >= 0`, Bejerman drops balance <= 0); an explicit
+  0 `amount_untaxed` becomes the total (intended, commented). No change.
+- L10 Native review `collection_connector_bejerman` 6c4fb6c (risk + reliability, consent
+  granted): approved, acknowledged. Advisory follow-ups, not done: a view with the wrong
+  columns or an empty answer drops every row and only shows as "N unmatched"; no test for
+  the legacy `amount_untaxed` 0 → total fallback nor for a blank NGEX.
+- L11 Close: branch `feat/untaxed-commission` in both repos, not pushed. Engram mirror
+  pending (no memory tool in this session).
