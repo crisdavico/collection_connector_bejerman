@@ -7,19 +7,21 @@ from datetime import date
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase
 
-from .test_bejerman_connector import (
-    _DEBT_ROWS,
+from .common import (
     _REFRESH_FAILED,
     _SOAPACTION_CIERRE,
     _TODAY,
-    _UNTAXED_SCENARIO,
-    _UNTAXED_VIEW,
-    BejermanTestMixin,
     _call_body,
     _call_soap_action,
     _parametros_json,
-    _patch_httpx,
     _patch_today,
+)
+from .test_bejerman_connector import (
+    _DEBT_ROWS,
+    _UNTAXED_SCENARIO,
+    _UNTAXED_VIEW,
+    BejermanTestMixin,
+    _patch_httpx,
     _untaxed_row,
 )
 

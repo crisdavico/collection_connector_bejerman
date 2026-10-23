@@ -6,8 +6,10 @@ from odoo.fields import Command
 from odoo.tests import TransactionCase
 from odoo.tools.safe_eval import safe_eval
 
-from .test_bejerman_connector import (
+from .common import (
     _CLIENTES,
+)
+from .test_bejerman_connector import (
     _DEBT_ROWS,
     BejermanTestMixin,
     _debt_row,

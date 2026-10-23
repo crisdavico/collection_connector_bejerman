@@ -11,11 +11,9 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase
 from odoo.tools import mute_logger
 
-from .test_bejerman_connector import (
+from .common import (
     _CLIENTES,
     _CUSTOMER_KEYS,
-    _DEBT_ROWS,
-    _DEBT_VIEW,
     _INVOICE_KEYS,
     _NOT_CONFIGURED,
     _REFRESH_FAILED,
@@ -23,14 +21,18 @@ from .test_bejerman_connector import (
     _SOAPACTION_REGISTRO,
     _WS_URL,
     _WS_URL_B,
-    BejermanTestMixin,
     _call_body,
     _call_soap_action,
+    _parametros_json,
+    _patch_today,
+)
+from .test_bejerman_connector import (
+    _DEBT_ROWS,
+    _DEBT_VIEW,
+    BejermanTestMixin,
     _debt_row,
     _erp_post,
-    _parametros_json,
     _patch_httpx,
-    _patch_today,
 )
 
 _CONNECTOR_LOGGER = (

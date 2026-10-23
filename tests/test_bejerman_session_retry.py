@@ -21,7 +21,7 @@ from odoo.addons.collection_connector_bejerman.service.settings import (
     Settings,
 )
 
-from .test_bejerman_connector import (
+from .common import (
     _CIERRE_OK,
     _CLAVE,
     _CLIENTES,
@@ -31,10 +31,12 @@ from .test_bejerman_connector import (
     _SOAPACTION_EJECUTAR,
     _SOAPACTION_REGISTRO,
     _WS_URL,
-    BejermanTestMixin,
     _call_soap_action,
     _ejecutar_ok,
     _xml_response,
+)
+from .test_bejerman_connector import (
+    BejermanTestMixin,
 )
 
 _SESSION = "odoo.addons.collection_connector_bejerman.service.session"

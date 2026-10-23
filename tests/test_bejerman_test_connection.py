@@ -8,15 +8,17 @@ import httpx
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase
 
-from .test_bejerman_connector import (
+from .common import (
     _CLAVE,
     _ERROR_MSG,
     _SESSION_TOKEN,
     _SOAPACTION_CIERRE,
     _WS_URL,
-    BejermanTestMixin,
     _call_body,
     _call_soap_action,
+)
+from .test_bejerman_connector import (
+    BejermanTestMixin,
     _patch_httpx,
 )
 

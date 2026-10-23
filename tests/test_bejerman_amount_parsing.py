@@ -5,13 +5,15 @@ from odoo.tests import TransactionCase
 
 from odoo.addons.collection_connector_bejerman.service import mapping
 
-from .test_bejerman_connector import (
+from .common import (
     _CLIENTES,
+    _patch_today,
+)
+from .test_bejerman_connector import (
     _DEBT_PREFIX,
     BejermanTestMixin,
     _debt_row,
     _patch_httpx,
-    _patch_today,
 )
 
 _CONNECTOR_LOGGER = (

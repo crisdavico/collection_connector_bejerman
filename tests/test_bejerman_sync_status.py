@@ -16,13 +16,15 @@ from odoo.addons.collection.models.collection_common import (
     privileged,
 )
 
-from .test_bejerman_connector import (
+from .common import (
     _CLAVE,
     _SESSION_TOKEN,
     _WS_URL,
+    _patch_today,
+)
+from .test_bejerman_connector import (
     BejermanTestMixin,
     _patch_httpx,
-    _patch_today,
 )
 
 _CONNECTOR_LOGGER = (
