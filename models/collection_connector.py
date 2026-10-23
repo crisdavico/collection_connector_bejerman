@@ -171,14 +171,6 @@ class CollectionConnectorBejerman(models.Model):
         string="Bejerman CA Bundle",
         groups="base.group_system",
     )
-    # Legacy fields, unused since sellers come from the debt view. Keep stored
-    # values for compatibility, but do not expose them in the configuration form.
-    bejerman_seller_scenario = fields.Char(
-        groups="base.group_system",
-    )
-    bejerman_seller_view = fields.Char(
-        groups="base.group_system",
-    )
     bejerman_debt_scenario = fields.Char(
         string="Debt Scenario",
         groups="base.group_system,collection.group_collection_manager",

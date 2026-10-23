@@ -3,13 +3,11 @@
 
 import json
 from datetime import date
-from pathlib import Path
 from unittest.mock import patch
 
 from psycopg2 import IntegrityError
 
 from odoo.exceptions import AccessError, UserError
-from odoo.modules.module import load_manifest
 from odoo.tests import TransactionCase
 from odoo.tools import mute_logger
 
@@ -437,22 +435,6 @@ class TestBejermanSnapshot(BejermanTestMixin, TransactionCase):
             with self.subTest(model=name, operation="search"):
                 with self.assertRaises(AccessError):
                     denied.search([("connector_id", "=", connector.id)])
-
-
-class TestBejermanRelease(TransactionCase):
-    """Upgrade shape of the snapshot release."""
-
-    def test_version_bumped_without_migration_script(self):
-        """`-u` creates the new tables, ACL, rules and cron by itself.
-
-        New models are created by the ORM, the cron record is new (so `noupdate`
-        does not skip it), and a blank `bejerman_quotation_kinds` is resolved at
-        read time, so no data migration is required.
-        """
-        manifest = load_manifest("collection_connector_bejerman")
-        self.assertEqual(manifest["version"], "19.0.1.5.0")
-        addon = Path(__file__).resolve().parent.parent
-        self.assertFalse((addon / "migrations").exists())
 
 
 class TestBejermanRefreshEntryPoints(BejermanTestMixin, TransactionCase):

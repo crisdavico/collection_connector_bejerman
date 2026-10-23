@@ -62,16 +62,6 @@ class TestBejermanTestConnection(BejermanTestMixin, TransactionCase):
         bodies = [_call_body(call) for call in mock_post.call_args_list]
         self.assertFalse(any("ObtenerJsonQueryVista" in body for body in bodies))
 
-    def test_seller_fields_are_not_required_to_test_the_connection(self):
-        """The seller scenario/view are unused: blank or set, the result is the same."""
-        for overrides in (
-            {},
-            {"bejerman_seller_scenario": "VENDEDORES", "bejerman_seller_view": "X"},
-        ):
-            connector = self._make_connector(**overrides)
-            with _patch_httpx():
-                self.assertIs(connector._bejerman_test_connection(), True)
-
     def test_missing_settings_are_named(self):
         connector = self._make_connector(bejerman_ws_url="", bejerman_clave="")
         with _patch_httpx() as mock_post:
