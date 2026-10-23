@@ -113,6 +113,10 @@ _NOT_CONFIGURED = "The collection connector is not configured."
 _REFRESH_FAILED = (
     "The Bejerman debt snapshot could not be refreshed. The previous snapshot was kept."
 )
+_NO_DEBT_SOURCE = (
+    "The Bejerman connector has no debt source. "
+    "Choose the Bejerman profile of its customer."
+)
 _BEJERMAN_CONFIG_FIELDS = (
     "bejerman_ws_url",
     "bejerman_usuario",
