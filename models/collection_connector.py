@@ -207,8 +207,8 @@ class CollectionConnectorBejerman(models.Model):
     bejerman_untaxed_view = fields.Char(
         string="Untaxed View",
         help="Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA "
-        "CRIS). It must list every open invoice: one it does not list keeps "
-        "commission on its total.",
+        "CRIS), read for the last 365 days. Only the open invoices it lists, and "
+        "the quotations of the same 365 days, are kept as debt.",
         groups="base.group_system,collection.group_collection_manager",
     )
     # Snapshot bookkeeping is not sensitive and must stay readable by internal
@@ -489,8 +489,9 @@ class CollectionConnectorBejerman(models.Model):
         written until every answer mapped cleanly; the swap itself is one savepoint.
         The sellers come from the same debt view download (every row, open or not),
         so listing sellers never costs a Bejerman request. When the sales VAT book
-        view is set, it is read in the same session for each invoice's untaxed
-        amount. Any failure keeps the previous snapshot.
+        view is set, it is read in the same session for the last 365 days: only the
+        invoices it lists are kept, with their untaxed amount, and only the
+        quotations issued in that window. Any failure keeps the previous snapshot.
         """
         self.ensure_one()
         self._bejerman_require_debt_query()
@@ -500,6 +501,7 @@ class CollectionConnectorBejerman(models.Model):
         kinds = self._bejerman_quotation_kinds()
         scenario = self.bejerman_debt_scenario.strip()
         view = self.bejerman_debt_view.strip()
+        today = self._bejerman_today()
         try:
             with self._bejerman_client() as client:
                 customers = mapping.map_customer_rows(client.tablas.get_customers())
@@ -520,13 +522,17 @@ class CollectionConnectorBejerman(models.Model):
                 shares = None
                 if untaxed_query:
                     shares = mapping.map_untaxed_shares(
-                        client.queries.get_json_query_view(*untaxed_query)
+                        client.queries.get_json_query_view(
+                            *untaxed_query, mapping.untaxed_date_filter(today)
+                        )
                     )
-                mapping.apply_untaxed(debts, shares, stats)
+                debts = mapping.apply_untaxed(
+                    debts, shares, stats, since=mapping.untaxed_window_start(today)
+                )
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
         skipped = self._bejerman_log_skipped_rows(stats)
-        self._bejerman_log_untaxed_unmatched(stats)
+        self._bejerman_log_untaxed_left_out(stats, today)
         self._bejerman_replace_snapshot(
             customers, debts, sellers, started_at, skipped=skipped
         )
@@ -547,22 +553,28 @@ class CollectionConnectorBejerman(models.Model):
         return skipped
 
     @api.private
-    def _bejerman_log_untaxed_unmatched(self, stats):
-        """Log the open invoices the sales VAT book view does not list.
-
-        Their commission is paid on the total, so the operator can widen the view.
-        """
+    def _bejerman_log_untaxed_left_out(self, stats, today):
+        """Log the open debt left out by the sales VAT book view's 365-day window."""
         unmatched = stats.get("untaxed_unmatched", 0)
         if unmatched:
             _logger.warning(
-                "Bejerman debt of connector %s: %s open invoices have no untaxed "
-                "amount in the sales VAT book view, their commission uses the "
-                "total (e.g. %s)",
+                "Bejerman debt of connector %s: %s open invoices are not in the "
+                "sales VAT book view of the last %s days and were left out (e.g. %s)",
                 self.id,
                 unmatched,
+                mapping.UNTAXED_WINDOW_DAYS,
                 ", ".join(stats.get("untaxed_unmatched_ids") or ()),
             )
-        return unmatched
+        outdated = stats.get("quotations_outside_window", 0)
+        if outdated:
+            _logger.warning(
+                "Bejerman debt of connector %s: %s open quotations were issued "
+                "before %s and were left out",
+                self.id,
+                outdated,
+                mapping.untaxed_window_start(today).isoformat(),
+            )
+        return unmatched + outdated
 
     @api.model
     @api.private

@@ -42,17 +42,22 @@ downloading inline.
 Untaxed amount (seller commission base): when **Untaxed Scenario** and **Untaxed View**
 are set (a sales VAT book query view, e.g. `Libro IVA Ventas/IA CRIS`; managers can edit
 both, setting only one is a configuration error), the refresh reads that view in the
-same session, after the debt view. Each voucher is matched on its internal type
-(`COMP_CODINT`, not `COMP_COD`), point of sale, letter and number (from `COMPROBANTE`)
-and customer (`CLIENTE_COD`); its untaxed share is `(NETO + NGEX) / TOTAL`, so taxes and
-perceptions are left out. Every open debt row stores `amount_untaxed` and
-`balance_untaxed`, the share of its amount and of its open balance, and
-`get_customer_debt` sends `amount_untaxed` to `collection`, which pays the seller's
-commission on that share of what was collected. Quotations, and every row when the view
-is not set, keep the total. An invoice the view does not list keeps the total too; the
-refresh logs how many and a few of their ids, so the view must cover every open invoice.
-A failed read of the view fails the refresh like the debt view. The live path
-(`bejerman_debt_filter_field` set) does not read the view and sends the total.
+same session, after the debt view, for the last 365 days: the view's two variable
+filters on the issue date are sent on every refresh, each by the name the Queries
+parameters dialog shows: `Fecha_Emision >=` as 365 days ago and `Fecha_Emision <=` as
+today, `DD/MM/YYYY`. Each voucher is matched on its internal type (`COMP_CODINT`, not
+`COMP_COD`), point of sale, letter and number (from `COMPROBANTE`) and customer
+(`CLIENTE_COD`); its untaxed share is `(NETO + NGEX) / TOTAL`, so taxes and perceptions
+are left out. Every open debt row stores `amount_untaxed` and `balance_untaxed`, the
+share of its amount and of its open balance, and `get_customer_debt` sends
+`amount_untaxed` to `collection`, which pays the seller's commission on that share of
+what was collected. Only the open invoices that both views list are kept: an invoice of
+`Saldos al dia` the VAT book view does not list is left out of the debt, and the refresh
+logs how many and a few of their ids. Quotations keep the total and are kept only when
+issued in the same 365 days; older ones are left out and counted in the log. When the
+view is not set, every open row is kept with its total. A failed read of the view fails
+the refresh like the debt view. The live path (`bejerman_debt_filter_field` set) does
+not read the view and sends the total.
 
 Sync status: the connector form's **Debt Sync** tab (collections managers and
 administrators) shows when the last successful refresh started and ended, the row counts
