@@ -31,7 +31,8 @@ scratch DB (seedian root).
       pre-migration handing the moved fields to the Kras addon (inline; chain on
       `feat/kras-split-chain`, see L9)
 - [x] T2 S1 S2 S3 S4 S6 Kras addon: fields, mapping, overrides, views, install hook,
-      moved tests, README, es_AR (inline; 7ce3774 in the new repo, `feat/kras-split`)
+      moved tests, README, es_AR (inline; Kras repo chain on
+      `feat/kras-split-chain`, see L10)
 - [x] T3 S4 S6 upgrade on a copy of the devel DB: counts and untaxed amounts kept,
       profiles set (inline; evidence L6)
 
@@ -91,3 +92,15 @@ scratch DB (seedian root).
   on DB copies, L6); a base-only upgrade serves the old snapshot without untaxed amounts
   until refreshed (install both in one run). `feat/kras-split` is the single-commit
   reference with the same final tree.
+- L10 2026-10-23 Kras repo rebuilt as `feat/kras-split-chain`: fe7740d tooling root (no
+  base to review against); 167a15a profile code, install hook and profile tests (41
+  tests; high risk, item 1): reviewed alone, approved; 84b9e9e + 1ac4918 moved tests
+  (90): reviewed, approved; 1dc216e remaining moved tests (181 with the base): reviewed,
+  approved; d919ebf docs and es_AR: under budget, pending. Final tree identical to the
+  single-commit reference 7ce3774. Every approval acknowledged. Advisories left as
+  follow-ups (all behaviour or tests moved unchanged from fffd512): an unusable VAT book
+  row drops the invoice instead of keeping its total, as the docstring claims; the live
+  path sends no untaxed amount; quotations with a blank issue date are dropped; a few
+  moved tests assert weakly. Upgrade re-run with the final chains (guard change in
+  003f3ac): one command and base-then-Kras both keep settings, 1081 rows and the
+  untaxed sums; profile `kras`.
