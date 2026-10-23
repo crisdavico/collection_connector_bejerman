@@ -83,23 +83,6 @@ def _customer_payload(customer):
     }
 
 
-def _invoice_payload(debt, today):
-    """Sqlite-raw invoice row; ``state`` depends on today, so it is never stored."""
-    due_date = debt.due_date.isoformat() if debt.due_date else ""
-    return {
-        "id": debt.external_invoice_id,
-        "number": debt.number or "",
-        "issue_date": debt.issue_date.isoformat() if debt.issue_date else "",
-        "due_date": due_date,
-        "amount": debt.amount,
-        "balance": debt.balance,
-        # Rows stored before the untaxed amount existed hold 0: their total.
-        "amount_untaxed": debt.amount_untaxed or debt.amount,
-        "state": mapping.debt_state(due_date, today),
-        "document_kind": debt.document_kind,
-    }
-
-
 def failure_reason(exc):
     """Generic failure class of a refresh exception (never its text)."""
     reason = getattr(exc, "bejerman_reason", None)
@@ -127,6 +110,15 @@ class CollectionConnectorBejerman(models.Model):
     type = fields.Selection(
         selection_add=[("bejerman", "Bejerman")],
         ondelete={"bejerman": "cascade"},
+    )
+    # Several customers' connectors share one database: the profile picks, per
+    # connector, which addon reads its debt. Customer addons add their value.
+    bejerman_profile = fields.Selection(
+        selection=[("standard", "Standard")],
+        default="standard",
+        required=True,
+        help="Which customer-specific addon reads this connector's debt. "
+        "Standard reads customers only and has no debt source.",
     )
     bejerman_ws_url = fields.Char(
         string="Bejerman WS URL",
@@ -474,62 +466,96 @@ class CollectionConnectorBejerman(models.Model):
         return tuple(values)
 
     @api.private
-    def _bejerman_refresh_snapshot(self):
-        """Download customers and the debt view, then replace this connector's snapshot.
+    def _bejerman_check_snapshot_source(self):
+        """Fail before opening a session when the profile cannot read debt.
 
-        The ERP is read first, inside one Registro -> Cierre session, and nothing is
-        written until every answer mapped cleanly; the swap itself is one savepoint.
-        The sellers come from the same debt view download (every row, open or not),
-        so listing sellers never costs a Bejerman request. When the sales VAT book
-        view is set, it is read in the same session for the last 365 days: only the
-        invoices it lists are kept, with their untaxed amount, and only the
-        quotations issued in that window. Any failure keeps the previous snapshot.
+        Profile addons override it to check their own settings.
         """
         self.ensure_one()
         self._bejerman_require_debt_query()
+        self._bejerman_untaxed_query()
+
+    @api.private
+    def _bejerman_read_snapshot(self, client, today, stats):
+        """Read ``(customers, debts, sellers)`` inside the open Bejerman session.
+
+        Profile addons override it. Customers are ``mapping.map_customer_rows``
+        rows, optionally with ``credit_total``; debts and sellers are the field
+        values of the debt and seller snapshot rows. Rows skipped because an
+        amount could not be read are counted in ``stats["unparsable_amounts"]``.
+
+        Customers, then the debt view, then the sales VAT book when set. The
+        sellers come from the same debt view download (every row, open or not),
+        so listing sellers never costs a Bejerman request. When the sales VAT
+        book view is set, it is read for the last 365 days: only the invoices it
+        lists are kept, with their untaxed amount, and only the quotations issued
+        in that window.
+        """
+        self.ensure_one()
         untaxed_query = self._bejerman_untaxed_query()
+        kinds = self._bejerman_quotation_kinds()
+        customers = mapping.map_customer_rows(client.tablas.get_customers())
+        debt_rows = client.queries.get_json_query_view(
+            self.bejerman_debt_scenario.strip(), self.bejerman_debt_view.strip()
+        )
+        # Debt of disabled or unknown customers is not brought.
+        codes = {row["customer_code"] for row in customers}
+        debts = mapping.map_open_debt(
+            debt_rows, kinds, customer_codes=codes, stats=stats
+        )
+        credits = mapping.map_customer_credits(debt_rows, customer_codes=codes)
+        customers = [
+            dict(row, credit_total=credits.get(row["customer_code"], 0.0))
+            for row in customers
+        ]
+        sellers = mapping.map_debt_sellers(debt_rows)
+        # The debt view is large: free it before the next download.
+        del debt_rows
+        shares = None
+        if untaxed_query:
+            shares = mapping.map_untaxed_shares(
+                client.queries.get_json_query_view(
+                    *untaxed_query, mapping.untaxed_date_filter(today)
+                )
+            )
+        debts = mapping.apply_untaxed(
+            debts, shares, stats, since=mapping.untaxed_window_start(today)
+        )
+        return customers, debts, sellers
+
+    @api.private
+    def _bejerman_refresh_snapshot(self):
+        """Read the profile's snapshot, then replace this connector's snapshot.
+
+        The ERP is read first, inside one Registro -> Cierre session, and nothing is
+        written until every answer mapped cleanly; the swap itself is one savepoint.
+        Any failure keeps the previous snapshot.
+        """
+        self.ensure_one()
+        self._bejerman_check_snapshot_source()
         started_at = fields.Datetime.now()
         stats = {}
-        kinds = self._bejerman_quotation_kinds()
-        scenario = self.bejerman_debt_scenario.strip()
-        view = self.bejerman_debt_view.strip()
         today = self._bejerman_today()
         try:
             with self._bejerman_client() as client:
-                customers = mapping.map_customer_rows(client.tablas.get_customers())
-                debt_rows = client.queries.get_json_query_view(scenario, view)
-                # Debt of disabled or unknown customers is not brought.
-                codes = {row["customer_code"] for row in customers}
-                debts = mapping.map_open_debt(
-                    debt_rows, kinds, customer_codes=codes, stats=stats
-                )
-                credits = mapping.map_customer_credits(debt_rows, customer_codes=codes)
-                customers = [
-                    dict(row, credit_total=credits.get(row["customer_code"], 0.0))
-                    for row in customers
-                ]
-                sellers = mapping.map_debt_sellers(debt_rows)
-                # The debt view is large: free it before the next download.
-                del debt_rows
-                shares = None
-                if untaxed_query:
-                    shares = mapping.map_untaxed_shares(
-                        client.queries.get_json_query_view(
-                            *untaxed_query, mapping.untaxed_date_filter(today)
-                        )
-                    )
-                debts = mapping.apply_untaxed(
-                    debts, shares, stats, since=mapping.untaxed_window_start(today)
+                customers, debts, sellers = self._bejerman_read_snapshot(
+                    client, today, stats
                 )
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
         skipped = self._bejerman_log_skipped_rows(stats)
-        self._bejerman_log_untaxed_left_out(stats, today)
+        self._bejerman_log_snapshot_read(stats, today)
         self._bejerman_replace_snapshot(
             customers, debts, sellers, started_at, skipped=skipped
         )
         self._bejerman_clear_sync_notices()
         return True
+
+    @api.private
+    def _bejerman_log_snapshot_read(self, stats, today):
+        """Profiles log what their read left out, once the session is closed."""
+        self.ensure_one()
+        self._bejerman_log_untaxed_left_out(stats, today)
 
     @api.private
     def _bejerman_log_skipped_rows(self, stats):
@@ -826,6 +852,23 @@ class CollectionConnectorBejerman(models.Model):
         return [_customer_payload(customer) for customer in customers]
 
     @api.private
+    def _bejerman_invoice_payload(self, debt, today):
+        """Sqlite-raw invoice row; ``state`` depends on today, so it is never stored."""
+        due_date = debt.due_date.isoformat() if debt.due_date else ""
+        return {
+            "id": debt.external_invoice_id,
+            "number": debt.number or "",
+            "issue_date": debt.issue_date.isoformat() if debt.issue_date else "",
+            "due_date": due_date,
+            "amount": debt.amount,
+            "balance": debt.balance,
+            # Rows stored before the untaxed amount existed hold 0: their total.
+            "amount_untaxed": debt.amount_untaxed or debt.amount,
+            "state": mapping.debt_state(due_date, today),
+            "document_kind": debt.document_kind,
+        }
+
+    @api.private
     def _bejerman_get_customer_debt(self, external_seller_id, customer_identification):
         self.ensure_one()
         # Config flag read with sudo: it only picks the code path, nothing is returned.
@@ -859,7 +902,7 @@ class CollectionConnectorBejerman(models.Model):
         today = self._bejerman_today()
         return {
             "customer": _customer_payload(customers),
-            "invoices": [_invoice_payload(debt, today) for debt in debts],
+            "invoices": [self._bejerman_invoice_payload(debt, today) for debt in debts],
             "credit_total": customers.credit_total,
             "as_of": fields.Datetime.to_string(self.bejerman_snapshot_refreshed_at),
         }
