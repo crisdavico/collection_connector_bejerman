@@ -3,24 +3,24 @@ Read-only Bejerman seller, customer, and debt source for Collections.
 Adds connector type `bejerman`. Each ERP read opens a SOAP session over a vendored httpx
 client: Registro, then Ejecutar, then Cierre even when Ejecutar fails. Reads need TABLAS
 `ObtenerClientes` plus the query views of the connector's profile; missing grants fail
-closed. There is no receipt write-back, no MCP, no menus, no sample ERP data, and no
-`post_init_hook`. Depends on `collection` and `mail`. Requires the `httpx` Python extra.
-Credentials and connection settings use the shared connector form opened by **Configure
-Connection**. Credentials, endpoint, TLS, server paths and the session deadline are
-Settings-only (`base.group_system`); clave is password-masked. Collections Managers can
-edit company, workstation, branch and timeout for their company. Test Connection needs
-an administrator or a Collections Manager of the connector's company. Transient failures
-are retried up to 3 times with exponential backoff and jitter (an HTTP `Retry-After` is
-honoured, capped at 30 s): the read operations on connect errors, timeouts, dropped
-connections, HTTP 429 and 5xx; Registro only when the server cannot have processed it
-(connect errors, HTTP 429 and 503), so a lost answer never opens a second ERP session;
-CierreProceso never. One session (login, reads, retries and close) must finish within
-**Bejerman Deadline (s)** (default 900): each request's timeout is capped by the time
-left and every answer is read in chunks against it, so a slowly trickling download is
-aborted. The HTTP client is closed on every path, a failed login included. Faults raise
-a generic `UserError` with no SOAP, Token, URL, user, or clave. Customer listing and
-customer debt are seller-scoped and stay in this addon; `collection` does not call
-Bejerman.
+closed. There is no receipt write-back, no MCP, no sample ERP data, and no
+`post_init_hook`; its only menu is the **Bejerman Debt** list. Depends on `collection`
+and `mail`. Requires the `httpx` Python extra. Credentials and connection settings use
+the shared connector form opened by **Configure Connection**. Credentials, endpoint,
+TLS, server paths and the session deadline are Settings-only (`base.group_system`);
+clave is password-masked. Collections Managers can edit company, workstation, branch and
+timeout for their company. Test Connection needs an administrator or a Collections
+Manager of the connector's company. Transient failures are retried up to 3 times with
+exponential backoff and jitter (an HTTP `Retry-After` is honoured, capped at 30 s): the
+read operations on connect errors, timeouts, dropped connections, HTTP 429 and 5xx;
+Registro only when the server cannot have processed it (connect errors, HTTP 429 and
+503), so a lost answer never opens a second ERP session; CierreProceso never. One
+session (login, reads, retries and close) must finish within **Bejerman Deadline (s)**
+(default 900): each request's timeout is capped by the time left and every answer is
+read in chunks against it, so a slowly trickling download is aborted. The HTTP client is
+closed on every path, a failed login included. Faults raise a generic `UserError` with
+no SOAP, Token, URL, user, or clave. Customer listing and customer debt are
+seller-scoped and stay in this addon; `collection` does not call Bejerman.
 
 Profiles: several customers' connectors share one database, and each customer's ERP has
 its own query views. **Bejerman Profile** picks, per connector, the addon that reads the
@@ -60,6 +60,12 @@ managers) is refused with a generic "out of date" error, in the agent's `custome
 in the Add Debt picker and when an allocation snapshots its lines, instead of serving
 stale figures. Every debt answer carries `as_of`: the snapshot's refresh time, or the
 read time when a profile reads debt live, shown in the company timezone.
+
+Debt list: **Collections > Bejerman Debt** (Collections Managers only) lists every open
+invoice and quotation of the snapshot, read-only, with amount and balance totals. It
+searches by customer name or code, seller code and number, filters invoices, quotations
+and overdue rows, and groups by customer code, seller code and kind. The customer name
+is read from the customer snapshot of the same refresh, not stored.
 
 Sheets entered in the ERP: receipts are typed into Bejerman by hand and a collections
 manager marks the closed sheet **Entered in the ERP** (`collection`). Its applied
