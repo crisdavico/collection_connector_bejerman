@@ -1,7 +1,10 @@
 # Copyright 2026 Seedian
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import fields, models
+from collections import defaultdict
+
+from odoo import api, fields, models
+from odoo.fields import Domain
 
 
 class CollectionConnectorBejermanDebt(models.Model):
@@ -30,6 +33,12 @@ class CollectionConnectorBejermanDebt(models.Model):
     external_invoice_id = fields.Char(required=True)
     number = fields.Char()
     customer_code = fields.Char(required=True)
+    # Read from the customer snapshot of the same refresh; False when the
+    # customer row is missing.
+    customer_name = fields.Char(
+        compute="_compute_customer_name",
+        search="_search_customer_name",
+    )
     seller_code = fields.Char()
     issue_date = fields.Date()
     due_date = fields.Date()
@@ -46,3 +55,30 @@ class CollectionConnectorBejermanDebt(models.Model):
         "External invoice id must be unique per connector.",
     )
     _connector_customer_idx = models.Index("(connector_id, customer_code)")
+
+    @api.depends("connector_id", "customer_code")
+    def _compute_customer_name(self):
+        customers = self.env["collection.connector.bejerman.customer"].search(
+            [
+                ("connector_id", "in", self.connector_id.ids),
+                ("customer_code", "in", self.mapped("customer_code")),
+            ]
+        )
+        names = {(c.connector_id.id, c.customer_code): c.name for c in customers}
+        for debt in self:
+            debt.customer_name = names.get(
+                (debt.connector_id.id, debt.customer_code), False
+            )
+
+    def _search_customer_name(self, operator, value):
+        customers = self.env["collection.connector.bejerman.customer"].search(
+            [("name", operator, value)]
+        )
+        codes_by_connector = defaultdict(list)
+        for customer in customers:
+            codes_by_connector[customer.connector_id.id].append(customer.customer_code)
+        return Domain.OR(
+            Domain("connector_id", "=", connector_id)
+            & Domain("customer_code", "in", codes)
+            for connector_id, codes in codes_by_connector.items()
+        )

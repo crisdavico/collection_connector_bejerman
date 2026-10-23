@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_bejerman_debt_list" model="ir.ui.view">
+        <field name="name">collection.connector.bejerman.debt.list</field>
+        <field name="model">collection.connector.bejerman.debt</field>
+        <field name="arch" type="xml">
+            <list string="Bejerman Debt" create="false" edit="false" delete="false">
+                <field name="customer_code" />
+                <field name="customer_name" />
+                <field name="seller_code" />
+                <field name="document_kind" />
+                <field name="number" />
+                <field name="issue_date" />
+                <field name="due_date" />
+                <field name="amount" sum="Total" />
+                <field name="balance" sum="Total" />
+                <field name="connector_id" optional="hide" />
+                <field
+          name="company_id"
+          optional="hide"
+          groups="base.group_multi_company"
+        />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_bejerman_debt_search" model="ir.ui.view">
+        <field name="name">collection.connector.bejerman.debt.search</field>
+        <field name="model">collection.connector.bejerman.debt</field>
+        <field name="arch" type="xml">
+            <search string="Search Bejerman Debt">
+                <field name="customer_name" />
+                <field name="customer_code" />
+                <field name="seller_code" />
+                <field name="number" />
+                <filter
+          name="invoice"
+          string="Invoices"
+          domain="[('document_kind', '=', 'invoice')]"
+        />
+                <filter
+          name="quotation"
+          string="Quotations"
+          domain="[('document_kind', '=', 'quotation')]"
+        />
+                <separator />
+                <filter
+          name="overdue"
+          string="Overdue"
+          domain="[('due_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"
+        />
+                <group>
+                    <filter
+            name="group_customer"
+            string="Customer"
+            context="{'group_by': 'customer_code'}"
+          />
+                    <filter
+            name="group_seller"
+            string="Seller"
+            context="{'group_by': 'seller_code'}"
+          />
+                    <filter
+            name="group_kind"
+            string="Kind"
+            context="{'group_by': 'document_kind'}"
+          />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bejerman_debt" model="ir.actions.act_window">
+        <field name="name">Bejerman Debt</field>
+        <field name="res_model">collection.connector.bejerman.debt</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_bejerman_debt_search" />
+        <field name="help" type="html">
+            <p class="o_view_nocontent_empty_folder">
+                No debt in the Bejerman snapshot
+            </p>
+            <p>
+                Open debt appears here after the connector refreshes it from Bejerman.
+            </p>
+        </field>
+    </record>
+
+    <menuitem
+    id="menu_bejerman_debt"
+    name="Bejerman Debt"
+    parent="collection.menu_collection_root"
+    action="action_bejerman_debt"
+    sequence="40"
+    groups="collection.group_collection_manager"
+  />
+</odoo>

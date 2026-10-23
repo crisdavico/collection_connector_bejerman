@@ -125,6 +125,13 @@ msgid "Bejerman Deadline (s)"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model:ir.actions.act_window,name:collection_connector_bejerman.action_bejerman_debt
+#: model:ir.ui.menu,name:collection_connector_bejerman.menu_bejerman_debt
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_list
+msgid "Bejerman Debt"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_debt
 msgid "Bejerman Open Debt Snapshot"
 msgstr ""
@@ -296,9 +303,19 @@ msgid "Credit Total"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Customer"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__customer_code
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__customer_code
 msgid "Customer Code"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__customer_name
+msgid "Customer Name"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -459,6 +476,11 @@ msgid "Invoice"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Invoices"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_is_follower
 msgid "Is Follower"
 msgstr ""
@@ -466,6 +488,11 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__issue_date
 msgid "Issue Date"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Kind"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -558,6 +585,11 @@ msgid "Next Activity Type"
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.actions.act_window,help:collection_connector_bejerman.action_bejerman_debt
+msgid "No debt in the Bejerman snapshot"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__number
 msgid "Number"
 msgstr ""
@@ -594,6 +626,16 @@ msgid "Only administrators and Collections Managers can do this."
 msgstr ""
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.actions.act_window,help:collection_connector_bejerman.action_bejerman_debt
+msgid "Open debt appears here after the connector refreshes it from Bejerman."
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Overdue"
+msgstr ""
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__phone
 msgid "Phone"
 msgstr ""
@@ -607,6 +649,11 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_debt__document_kind__quotation
 msgid "Quotation"
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Quotations"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -632,6 +679,11 @@ msgstr ""
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_failure_count
 msgid "Scheduled refreshes that failed since the last successful one."
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Search Bejerman Debt"
 msgstr ""
 
 #. module: collection_connector_bejerman
@@ -795,6 +847,11 @@ msgstr ""
 #. odoo-python
 #: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
 msgid "This user is already bound to seller %(code)s."
+msgstr ""
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_list
+msgid "Total"
 msgstr ""
 
 #. module: collection_connector_bejerman

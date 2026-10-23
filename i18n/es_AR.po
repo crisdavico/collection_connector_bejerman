@@ -130,6 +130,13 @@ msgid "Bejerman Deadline (s)"
 msgstr "Plazo máximo de Bejerman (s)"
 
 #. module: collection_connector_bejerman
+#: model:ir.actions.act_window,name:collection_connector_bejerman.action_bejerman_debt
+#: model:ir.ui.menu,name:collection_connector_bejerman.menu_bejerman_debt
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_list
+msgid "Bejerman Debt"
+msgstr "Deuda de Bejerman"
+
+#. module: collection_connector_bejerman
 #: model:ir.model,name:collection_connector_bejerman.model_collection_connector_bejerman_debt
 msgid "Bejerman Open Debt Snapshot"
 msgstr "Instantánea de deuda pendiente de Bejerman"
@@ -305,10 +312,20 @@ msgid "Credit Total"
 msgstr "Total de créditos"
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Customer"
+msgstr "Cliente"
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__customer_code
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__customer_code
 msgid "Customer Code"
 msgstr "Código de cliente"
+
+#. module: collection_connector_bejerman
+#: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__customer_name
+msgid "Customer Name"
+msgstr "Nombre del cliente"
 
 #. module: collection_connector_bejerman
 #: model:ir.model.constraint,message:collection_connector_bejerman.constraint_collection_connector_bejerman_customer_connector_code_uniq
@@ -472,6 +489,11 @@ msgid "Invoice"
 msgstr "Factura"
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Invoices"
+msgstr "Facturas"
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__message_is_follower
 msgid "Is Follower"
 msgstr "Es un seguidor"
@@ -480,6 +502,11 @@ msgstr "Es un seguidor"
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__issue_date
 msgid "Issue Date"
 msgstr "Fecha de emisión"
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Kind"
+msgstr "Clase"
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__bejerman_last_failure_at
@@ -571,6 +598,11 @@ msgid "Next Activity Type"
 msgstr "Siguiente tipo de actividad"
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.actions.act_window,help:collection_connector_bejerman.action_bejerman_debt
+msgid "No debt in the Bejerman snapshot"
+msgstr "No hay deuda en la instantánea de Bejerman"
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_debt__number
 msgid "Number"
 msgstr "Número"
@@ -609,6 +641,18 @@ msgstr ""
 "pueden realizar esta acción."
 
 #. module: collection_connector_bejerman
+#: model_terms:ir.actions.act_window,help:collection_connector_bejerman.action_bejerman_debt
+msgid "Open debt appears here after the connector refreshes it from Bejerman."
+msgstr ""
+"La deuda pendiente aparece aquí cuando el conector la actualiza desde "
+"Bejerman."
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Overdue"
+msgstr "Vencida"
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__phone
 msgid "Phone"
 msgstr "Teléfono"
@@ -623,6 +667,11 @@ msgstr "Seleccione el usuario a habilitar."
 #: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_debt__document_kind__quotation
 msgid "Quotation"
 msgstr "Presupuesto"
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Quotations"
+msgstr "Presupuestos"
 
 #. module: collection_connector_bejerman
 #: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_collection_connector_form_bejerman
@@ -648,6 +697,11 @@ msgstr "Error de envío del SMS"
 #: model:ir.model.fields,help:collection_connector_bejerman.field_collection_connector__bejerman_failure_count
 msgid "Scheduled refreshes that failed since the last successful one."
 msgstr "Actualizaciones programadas que fallaron desde la última exitosa."
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Search Bejerman Debt"
+msgstr "Buscar deuda de Bejerman"
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_seller_enable__seller_id
@@ -831,6 +885,11 @@ msgstr "Este vendedor no está habilitado."
 #: code:addons/collection_connector_bejerman/wizard/collection_connector_bejerman_seller_enable.py:0
 msgid "This user is already bound to seller %(code)s."
 msgstr "Este usuario ya está vinculado al vendedor %(code)s."
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_list
+msgid "Total"
+msgstr ""
 
 #. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector__type
