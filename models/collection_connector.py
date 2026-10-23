@@ -31,7 +31,6 @@ from ..service.settings import Credentials, Settings
 
 _logger = logging.getLogger(__name__)
 
-DEFAULT_QUOTATION_KINDS = "PRE"
 DEFAULT_SNAPSHOT_MAX_AGE_HOURS = 24
 DEFAULT_DEADLINE_SECONDS = 900
 SYNC_FAILED_ACTIVITY = (
@@ -83,23 +82,6 @@ def _customer_payload(customer):
     }
 
 
-def _invoice_payload(debt, today):
-    """Sqlite-raw invoice row; ``state`` depends on today, so it is never stored."""
-    due_date = debt.due_date.isoformat() if debt.due_date else ""
-    return {
-        "id": debt.external_invoice_id,
-        "number": debt.number or "",
-        "issue_date": debt.issue_date.isoformat() if debt.issue_date else "",
-        "due_date": due_date,
-        "amount": debt.amount,
-        "balance": debt.balance,
-        # Rows stored before the untaxed amount existed hold 0: their total.
-        "amount_untaxed": debt.amount_untaxed or debt.amount,
-        "state": mapping.debt_state(due_date, today),
-        "document_kind": debt.document_kind,
-    }
-
-
 def failure_reason(exc):
     """Generic failure class of a refresh exception (never its text)."""
     reason = getattr(exc, "bejerman_reason", None)
@@ -127,6 +109,15 @@ class CollectionConnectorBejerman(models.Model):
     type = fields.Selection(
         selection_add=[("bejerman", "Bejerman")],
         ondelete={"bejerman": "cascade"},
+    )
+    # Several customers' connectors share one database: the profile picks, per
+    # connector, which addon reads its debt. Customer addons add their value.
+    bejerman_profile = fields.Selection(
+        selection=[("standard", "Standard")],
+        default="standard",
+        required=True,
+        help="Which customer-specific addon reads this connector's debt. "
+        "Standard reads customers only and has no debt source.",
     )
     bejerman_ws_url = fields.Char(
         string="Bejerman WS URL",
@@ -170,38 +161,6 @@ class CollectionConnectorBejerman(models.Model):
     bejerman_ca_bundle = fields.Char(
         string="Bejerman CA Bundle",
         groups="base.group_system",
-    )
-    bejerman_debt_scenario = fields.Char(
-        string="Debt Scenario",
-        groups="base.group_system,collection.group_collection_manager",
-    )
-    bejerman_debt_view = fields.Char(
-        string="Debt View",
-        groups="base.group_system,collection.group_collection_manager",
-    )
-    bejerman_quotation_kinds = fields.Char(
-        default=DEFAULT_QUOTATION_KINDS,
-        groups="base.group_system,collection.group_collection_manager",
-    )
-    bejerman_debt_filter_field = fields.Char(
-        help="Query-view column (e.g. CVE_CODCLI) that filters the debt view by "
-        "customer. When set, debt is read live per customer instead of from the "
-        "snapshot.",
-        groups="base.group_system,collection.group_collection_manager",
-    )
-    bejerman_untaxed_scenario = fields.Char(
-        string="Untaxed Scenario",
-        help="Scenario of the sales VAT book query view that gives each invoice's "
-        "untaxed amount (NETO + NGEX). Leave it and the view empty to pay "
-        "commission on the total.",
-        groups="base.group_system,collection.group_collection_manager",
-    )
-    bejerman_untaxed_view = fields.Char(
-        string="Untaxed View",
-        help="Sales VAT book query view, as Query/View (e.g. Libro IVA Ventas/IA "
-        "CRIS), read for the last 365 days. Only the open invoices it lists, and "
-        "the quotations of the same 365 days, are kept as debt.",
-        groups="base.group_system,collection.group_collection_manager",
     )
     # Snapshot bookkeeping is not sensitive and must stay readable by internal
     # users: the read path checks `bejerman_snapshot_refreshed_at` for its age.
@@ -277,12 +236,6 @@ class CollectionConnectorBejerman(models.Model):
     @api.private
     def _bejerman_raise_snapshot_status_locked(self):
         raise UserError(_("The Bejerman snapshot status is only updated by a refresh."))
-
-    @api.private
-    def _bejerman_quotation_kinds(self):
-        """Configured quotation voucher types; blank means the default ``PRE``."""
-        self.ensure_one()
-        return self.bejerman_quotation_kinds or DEFAULT_QUOTATION_KINDS
 
     @api.private
     def _bejerman_today(self):
@@ -397,8 +350,8 @@ class CollectionConnectorBejerman(models.Model):
         settings = self._bejerman_test_settings()
         host = urlparse(settings.ws_url).hostname
         stage = "login"
-        # Bejerman has no seller view, and the debt view is a ~200 MB download that
-        # only the snapshot refresh reads: Test Connection is login plus customers.
+        # Bejerman has no seller view, and debt views are large downloads that only
+        # the snapshot refresh reads: Test Connection is login plus customers.
         try:
             with BejermanClient(settings) as client:
                 stage = "customers"
@@ -429,107 +382,71 @@ class CollectionConnectorBejerman(models.Model):
         raise error from None
 
     @api.private
-    def _bejerman_require_debt_query(self):
-        """The debt view cannot be read until scenario and view are set."""
-        self.ensure_one()
-        missing = [
-            self._fields[name].string
-            for name in ("bejerman_debt_scenario", "bejerman_debt_view")
-            if not (self[name] or "").strip()
-        ]
-        if missing:
-            raise UserError(
-                _(
-                    "The Bejerman connector is not configured. "
-                    "Missing settings: %(settings)s.",
-                    settings=", ".join(missing),
-                )
+    def _bejerman_raise_no_debt_source(self):
+        """Always raises: the standard profile has no debt source."""
+        raise UserError(
+            _(
+                "The Bejerman connector has no debt source. "
+                "Choose the Bejerman profile of its customer."
             )
+        )
 
     @api.private
-    def _bejerman_untaxed_query(self):
-        """(scenario, view) of the sales VAT book view, or None when not set.
+    def _bejerman_check_snapshot_source(self):
+        """Fail before opening a session when the profile cannot read debt.
 
-        Optional: without it every debt keeps its total as the untaxed amount.
-        Setting only one of the two is a configuration error.
+        Profile addons override it to check their own settings; the standard
+        profile has no debt source, so its refresh fails as a configuration error.
         """
         self.ensure_one()
-        names = ("bejerman_untaxed_scenario", "bejerman_untaxed_view")
-        values = [(self[name] or "").strip() for name in names]
-        if not any(values):
-            return None
-        missing = [
-            self._fields[name].string
-            for name, value in zip(names, values, strict=True)
-            if not value
-        ]
-        if missing:
-            raise UserError(
-                _(
-                    "The Bejerman connector is not configured. "
-                    "Missing settings: %(settings)s.",
-                    settings=", ".join(missing),
-                )
-            )
-        return tuple(values)
+        self._bejerman_raise_no_debt_source()
+
+    @api.private
+    def _bejerman_read_snapshot(self, client, today, stats):
+        """Read ``(customers, debts, sellers)`` inside the open Bejerman session.
+
+        The standard profile has no debt source, so this base version always
+        raises; profile addons override it and return what follows. Customers
+        are ``mapping.map_customer_rows``
+        rows, optionally with ``credit_total``; debts and sellers are the field
+        values of the debt and seller snapshot rows. Rows skipped because an
+        amount could not be read are counted in ``stats["unparsable_amounts"]``.
+        """
+        self.ensure_one()
+        self._bejerman_raise_no_debt_source()
 
     @api.private
     def _bejerman_refresh_snapshot(self):
-        """Download customers and the debt view, then replace this connector's snapshot.
+        """Read the profile's snapshot, then replace this connector's snapshot.
 
         The ERP is read first, inside one Registro -> Cierre session, and nothing is
         written until every answer mapped cleanly; the swap itself is one savepoint.
-        The sellers come from the same debt view download (every row, open or not),
-        so listing sellers never costs a Bejerman request. When the sales VAT book
-        view is set, it is read in the same session for the last 365 days: only the
-        invoices it lists are kept, with their untaxed amount, and only the
-        quotations issued in that window. Any failure keeps the previous snapshot.
+        Any failure keeps the previous snapshot.
         """
         self.ensure_one()
-        self._bejerman_require_debt_query()
-        untaxed_query = self._bejerman_untaxed_query()
+        self._bejerman_check_snapshot_source()
         started_at = fields.Datetime.now()
         stats = {}
-        kinds = self._bejerman_quotation_kinds()
-        scenario = self.bejerman_debt_scenario.strip()
-        view = self.bejerman_debt_view.strip()
         today = self._bejerman_today()
         try:
             with self._bejerman_client() as client:
-                customers = mapping.map_customer_rows(client.tablas.get_customers())
-                debt_rows = client.queries.get_json_query_view(scenario, view)
-                # Debt of disabled or unknown customers is not brought.
-                codes = {row["customer_code"] for row in customers}
-                debts = mapping.map_open_debt(
-                    debt_rows, kinds, customer_codes=codes, stats=stats
-                )
-                credits = mapping.map_customer_credits(debt_rows, customer_codes=codes)
-                customers = [
-                    dict(row, credit_total=credits.get(row["customer_code"], 0.0))
-                    for row in customers
-                ]
-                sellers = mapping.map_debt_sellers(debt_rows)
-                # The debt view is large: free it before the next download.
-                del debt_rows
-                shares = None
-                if untaxed_query:
-                    shares = mapping.map_untaxed_shares(
-                        client.queries.get_json_query_view(
-                            *untaxed_query, mapping.untaxed_date_filter(today)
-                        )
-                    )
-                debts = mapping.apply_untaxed(
-                    debts, shares, stats, since=mapping.untaxed_window_start(today)
+                customers, debts, sellers = self._bejerman_read_snapshot(
+                    client, today, stats
                 )
         except (BejermanError, TypeError, ValueError) as exc:
             self._bejerman_refresh_failed(exc)
         skipped = self._bejerman_log_skipped_rows(stats)
-        self._bejerman_log_untaxed_left_out(stats, today)
+        self._bejerman_log_snapshot_read(stats, today)
         self._bejerman_replace_snapshot(
             customers, debts, sellers, started_at, skipped=skipped
         )
         self._bejerman_clear_sync_notices()
         return True
+
+    @api.private
+    def _bejerman_log_snapshot_read(self, stats, today):
+        """Profiles log what their read left out, once the session is closed."""
+        self.ensure_one()
 
     @api.private
     def _bejerman_log_skipped_rows(self, stats):
@@ -543,30 +460,6 @@ class CollectionConnectorBejerman(models.Model):
                 skipped,
             )
         return skipped
-
-    @api.private
-    def _bejerman_log_untaxed_left_out(self, stats, today):
-        """Log the open debt left out by the sales VAT book view's 365-day window."""
-        unmatched = stats.get("untaxed_unmatched", 0)
-        if unmatched:
-            _logger.warning(
-                "Bejerman debt of connector %s: %s open invoices are not in the "
-                "sales VAT book view of the last %s days and were left out (e.g. %s)",
-                self.id,
-                unmatched,
-                mapping.UNTAXED_WINDOW_DAYS,
-                ", ".join(stats.get("untaxed_unmatched_ids") or ()),
-            )
-        outdated = stats.get("quotations_outside_window", 0)
-        if outdated:
-            _logger.warning(
-                "Bejerman debt of connector %s: %s open quotations were issued "
-                "before %s and were left out",
-                self.id,
-                outdated,
-                mapping.untaxed_window_start(today).isoformat(),
-            )
-        return unmatched + outdated
 
     @api.model
     @api.private
@@ -740,17 +633,14 @@ class CollectionConnectorBejerman(models.Model):
     def _collection_erp_reflected_since(self):
         """Bejerman data includes ERP entries made before its read started.
 
-        The live filter path reads Bejerman at question time (now); the
-        snapshot reflects what Bejerman held when its last successful refresh
-        STARTED reading. A refresh that started before a sheet was marked
-        "Entered in the ERP" may predate the entry, so it releases nothing.
+        The snapshot reflects what Bejerman held when its last successful refresh
+        STARTED reading (a profile that reads debt live answers now). A refresh
+        that started before a sheet was marked "Entered in the ERP" may predate
+        the entry, so it releases nothing.
         """
         self.ensure_one()
         if self.type != "bejerman":
             return super()._collection_erp_reflected_since()
-        # Config flag read with sudo: it only picks the code path.
-        if self.sudo().bejerman_debt_filter_field:
-            return fields.Datetime.now()
         return self.bejerman_snapshot_started_at or False
 
     @api.private
@@ -826,13 +716,26 @@ class CollectionConnectorBejerman(models.Model):
         return [_customer_payload(customer) for customer in customers]
 
     @api.private
+    def _bejerman_invoice_payload(self, debt, today):
+        """Sqlite-raw invoice row; ``state`` depends on today, so it is never stored.
+
+        No ``amount_untaxed``: ``collection`` then pays commission on the total.
+        """
+        due_date = debt.due_date.isoformat() if debt.due_date else ""
+        return {
+            "id": debt.external_invoice_id,
+            "number": debt.number or "",
+            "issue_date": debt.issue_date.isoformat() if debt.issue_date else "",
+            "due_date": due_date,
+            "amount": debt.amount,
+            "balance": debt.balance,
+            "state": mapping.debt_state(due_date, today),
+            "document_kind": debt.document_kind,
+        }
+
+    @api.private
     def _bejerman_get_customer_debt(self, external_seller_id, customer_identification):
         self.ensure_one()
-        # Config flag read with sudo: it only picks the code path, nothing is returned.
-        if self.sudo().bejerman_debt_filter_field:
-            return self.sudo()._bejerman_live_customer_debt(
-                external_seller_id, customer_identification
-            )
         self._bejerman_require_fresh_snapshot()
         customers = self.env["collection.connector.bejerman.customer"].search(
             [
@@ -859,53 +762,7 @@ class CollectionConnectorBejerman(models.Model):
         today = self._bejerman_today()
         return {
             "customer": _customer_payload(customers),
-            "invoices": [_invoice_payload(debt, today) for debt in debts],
+            "invoices": [self._bejerman_invoice_payload(debt, today) for debt in debts],
             "credit_total": customers.credit_total,
             "as_of": fields.Datetime.to_string(self.bejerman_snapshot_refreshed_at),
         }
-
-    @api.private
-    def _bejerman_live_customer_debt(self, external_seller_id, customer_identification):
-        """Read one customer's open debt live from the debt view, filtered.
-
-        Used only when ``bejerman_debt_filter_field`` is set, i.e. the ERP view can
-        filter server side. Runs on a sudo record: credentials stay admin-only.
-        """
-        self.ensure_one()
-        self._bejerman_require_debt_query()
-        field = self.bejerman_debt_filter_field
-
-        def _get_debt(client):
-            row = mapping.find_customer_row(
-                client.tablas.get_customers(),
-                external_seller_id,
-                customer_identification,
-            )
-            if row is None:
-                return {"customer": None, "invoices": []}
-            customer = mapping.customer_from_row(row)
-            rows = client.queries.get_json_query_view(
-                self.bejerman_debt_scenario.strip(),
-                self.bejerman_debt_view.strip(),
-                mapping.debt_filter(field, mapping.erp_customer_code(row)),
-            )
-            today = self._bejerman_today()
-            code = customer["customer_code"]
-            stats = {}
-            entries = mapping.map_open_debt(
-                rows,
-                self._bejerman_quotation_kinds(),
-                customer_code=code,
-                stats=stats,
-            )
-            self._bejerman_log_skipped_rows(stats)
-            credits = mapping.map_customer_credits(rows, customer_code=code)
-            return {
-                "customer": customer,
-                "invoices": [mapping.entry_to_invoice(e, today) for e in entries],
-                "credit_total": credits.get(code, 0.0),
-                # Read live: the figures are as of now.
-                "as_of": fields.Datetime.to_string(fields.Datetime.now()),
-            }
-
-        return self._bejerman_call(_get_debt)

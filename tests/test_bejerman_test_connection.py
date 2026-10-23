@@ -8,7 +8,7 @@ import httpx
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase
 
-from .test_bejerman_connector import (
+from .common import (
     _CLAVE,
     _ERROR_MSG,
     _SESSION_TOKEN,

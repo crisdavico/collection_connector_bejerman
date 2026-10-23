@@ -16,6 +16,11 @@
             </xpath>
             <xpath expr="//field[@name='type']" position="after">
                 <field
+          name="bejerman_profile"
+          invisible="type != 'bejerman'"
+          groups="base.group_system,collection.group_collection_manager"
+        />
+                <field
           name="bejerman_ws_url"
           invisible="type != 'bejerman'"
           groups="base.group_system"
@@ -65,36 +70,6 @@
           name="bejerman_ca_bundle"
           invisible="type != 'bejerman'"
           groups="base.group_system"
-        />
-                <field
-          name="bejerman_debt_scenario"
-          invisible="type != 'bejerman'"
-          groups="base.group_system,collection.group_collection_manager"
-        />
-                <field
-          name="bejerman_debt_view"
-          invisible="type != 'bejerman'"
-          groups="base.group_system,collection.group_collection_manager"
-        />
-                <field
-          name="bejerman_debt_filter_field"
-          invisible="type != 'bejerman'"
-          groups="base.group_system,collection.group_collection_manager"
-        />
-                <field
-          name="bejerman_untaxed_scenario"
-          invisible="type != 'bejerman'"
-          groups="base.group_system,collection.group_collection_manager"
-        />
-                <field
-          name="bejerman_untaxed_view"
-          invisible="type != 'bejerman'"
-          groups="base.group_system,collection.group_collection_manager"
-        />
-                <field
-          name="bejerman_quotation_kinds"
-          invisible="type != 'bejerman'"
-          groups="base.group_system,collection.group_collection_manager"
         />
             </xpath>
             <xpath expr="//notebook" position="inside">

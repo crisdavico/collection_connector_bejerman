@@ -12,10 +12,11 @@ _MANAGE_GROUPS = ("base.group_system", "collection.group_collection_manager")
 class CollectionConnectorBejermanSeller(models.Model):
     """Voucher seller cached by the last debt snapshot refresh.
 
-    Bejerman has no seller view, so sellers come from the voucher seller carried by
-    every row of the debt view. Commission, phone and enabled state are not stored
-    here: they live in Odoo (binding, user, company) and are shown and changed
-    through the **Enable seller** / **Disable seller** actions.
+    Bejerman has no seller view, so the connector's profile reads the sellers from
+    its debt source (the voucher sellers of the debt view, say). Commission, phone
+    and enabled state are not stored here: they live in Odoo (binding, user,
+    company) and are shown and changed through the **Enable seller** / **Disable
+    seller** actions.
     """
 
     _name = "collection.connector.bejerman.seller"
