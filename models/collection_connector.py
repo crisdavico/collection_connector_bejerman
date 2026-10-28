@@ -621,7 +621,11 @@ class CollectionConnectorBejerman(models.Model):
                             "bejerman_snapshot_started_at": started_at or now,
                             "bejerman_snapshot_refreshed_at": now,
                             "bejerman_snapshot_customer_count": len(customers),
-                            "bejerman_snapshot_debt_count": len(debts),
+                            "bejerman_snapshot_debt_count": sum(
+                                1
+                                for debt in debts
+                                if debt.get("document_kind") != "credit_note"
+                            ),
                             "bejerman_snapshot_skipped_count": skipped,
                             "bejerman_failure_count": 0,
                         }
@@ -756,6 +760,7 @@ class CollectionConnectorBejerman(models.Model):
             [
                 ("connector_id", "=", self.id),
                 ("customer_code", "=", customers.customer_code),
+                ("document_kind", "!=", "credit_note"),
             ],
             order="due_date, number, external_invoice_id",
         )

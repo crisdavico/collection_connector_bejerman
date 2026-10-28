@@ -307,6 +307,16 @@ msgid "Created on"
 msgstr "Creado el"
 
 #. module: collection_connector_bejerman
+#: model:ir.model.fields.selection,name:collection_connector_bejerman.selection__collection_connector_bejerman_debt__document_kind__credit_note
+msgid "Credit Note"
+msgstr "Nota de crédito"
+
+#. module: collection_connector_bejerman
+#: model_terms:ir.ui.view,arch_db:collection_connector_bejerman.view_bejerman_debt_search
+msgid "Credit Notes"
+msgstr "Notas de crédito"
+
+#. module: collection_connector_bejerman
 #: model:ir.model.fields,field_description:collection_connector_bejerman.field_collection_connector_bejerman_customer__credit_total
 msgid "Credit Total"
 msgstr "Total de créditos"

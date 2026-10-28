@@ -43,6 +43,11 @@
           string="Quotations"
           domain="[('document_kind', '=', 'quotation')]"
         />
+                <filter
+          name="credit_note"
+          string="Credit Notes"
+          domain="[('document_kind', '=', 'credit_note')]"
+        />
                 <separator />
                 <filter
           name="overdue"

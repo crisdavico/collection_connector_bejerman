@@ -44,8 +44,14 @@ class CollectionConnectorBejermanDebt(models.Model):
     due_date = fields.Date()
     amount = fields.Float(digits=(16, 2))
     balance = fields.Float(digits=(16, 2))
+    # Credit notes are listed with their negative balance, never offered as
+    # debt to allocate (decision D4 nets them through the customer's credit).
     document_kind = fields.Selection(
-        selection=[("invoice", "Invoice"), ("quotation", "Quotation")],
+        selection=[
+            ("invoice", "Invoice"),
+            ("quotation", "Quotation"),
+            ("credit_note", "Credit Note"),
+        ],
         required=True,
         default="invoice",
     )

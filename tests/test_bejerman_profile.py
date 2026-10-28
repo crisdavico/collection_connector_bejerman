@@ -33,6 +33,17 @@ _DEBTS = [
     },
 ]
 _SELLERS = [{"seller_code": "E", "name": "Ana Seller"}]
+_CREDIT_NOTE = {
+    "external_invoice_id": "NC|0001|A|00000043",
+    "number": "NC A 0001-00000043",
+    "customer_code": "123",
+    "seller_code": "E",
+    "issue_date": "2026-01-12",
+    "due_date": "2026-01-12",
+    "amount": -25.0,
+    "balance": -25.0,
+    "document_kind": "credit_note",
+}
 
 
 def _profile_source(connector, client, today, stats):
@@ -43,6 +54,11 @@ def _profile_source(connector, client, today, stats):
     ]
     stats["unparsable_amounts"] = 2
     return customers, [dict(row) for row in _DEBTS], [dict(row) for row in _SELLERS]
+
+
+def _profile_source_with_credit_note(connector, client, today, stats):
+    customers, debts, sellers = _profile_source(connector, client, today, stats)
+    return customers, debts + [dict(_CREDIT_NOTE)], sellers
 
 
 class TestBejermanProfile(BejermanTestMixin, TransactionCase):
@@ -131,3 +147,28 @@ class TestBejermanProfile(BejermanTestMixin, TransactionCase):
             connector._collection_erp_reflected_since(),
             connector.bejerman_snapshot_started_at,
         )
+
+    def test_credit_notes_are_listed_but_never_offered_as_invoices(self):
+        """Credit note rows show in the debt list; the agent keeps invoices only."""
+        connector = self._make_connector()
+        model = type(connector)
+        with (
+            patch.object(model, "_bejerman_check_snapshot_source", new=lambda _s: None),
+            patch.object(
+                model, "_bejerman_read_snapshot", new=_profile_source_with_credit_note
+            ),
+            _patch_httpx(),
+        ):
+            connector._bejerman_refresh_snapshot()
+        debts = self.env["collection.connector.bejerman.debt"].search(
+            [("connector_id", "=", connector.id)]
+        )
+        self.assertEqual(
+            sorted((d.document_kind, d.balance) for d in debts),
+            [("credit_note", -25.0), ("invoice", 400.0)],
+        )
+        self.assertEqual(connector.bejerman_snapshot_debt_count, 1)
+        with _patch_today(connector):
+            raw = connector._bejerman_get_customer_debt("E", "20123456789")
+        self.assertEqual([row["id"] for row in raw["invoices"]], ["FA|0001|A|00000042"])
+        self.assertEqual(raw["credit_total"], 25.0)
