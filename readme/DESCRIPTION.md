@@ -62,10 +62,12 @@ stale figures. Every debt answer carries `as_of`: the snapshot's refresh time, o
 read time when a profile reads debt live, shown in the company timezone.
 
 Debt list: **Collections > Bejerman Debt** (Collections Managers only) lists every open
-invoice and quotation of the snapshot, read-only, with amount and balance totals. It
-searches by customer name or code, seller code and number, filters invoices, quotations
-and overdue rows, and groups by customer code, seller code and kind. The customer name
-is read from the customer snapshot of the same refresh, not stored.
+invoice, quotation and credit note of the snapshot, read-only, with amount and balance
+totals. Credit notes (kind **Credit Note**) carry their negative balance, so the balance
+total nets them; they are listed only and never offered as debt to allocate. It searches
+by customer name or code, seller code and number, filters invoices, quotations, credit
+notes and overdue rows, and groups by customer code, seller code and kind. The customer
+name is read from the customer snapshot of the same refresh, not stored.
 
 Sheets entered in the ERP: receipts are typed into Bejerman by hand and a collections
 manager marks the closed sheet **Entered in the ERP** (`collection`). Its applied

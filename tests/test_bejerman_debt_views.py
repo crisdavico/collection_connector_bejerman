@@ -73,3 +73,14 @@ class TestBejermanDebtViews(BejermanTestMixin, TransactionCase):
             [("id", "in", debts.ids), ("customer_name", "ilike", "acme")]
         )
         self.assertEqual(found.mapped("external_invoice_id"), ["1"])
+
+    def test_search_filters_credit_notes(self):
+        manager = self._create_user("debt_manager", _MANAGER)
+        views = (
+            self.env["collection.connector.bejerman.debt"]
+            .with_user(manager)
+            .get_views([(False, "search")])
+        )
+        arch = etree.fromstring(views["views"]["search"]["arch"])
+        (credit_filter,) = arch.xpath("//filter[@name='credit_note']")
+        self.assertIn("credit_note", credit_filter.get("domain"))
