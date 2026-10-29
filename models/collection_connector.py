@@ -409,7 +409,10 @@ class CollectionConnectorBejerman(models.Model):
         raises; profile addons override it and return what follows. Customers
         are ``mapping.map_customer_rows``
         rows, optionally with ``credit_total``; debts and sellers are the field
-        values of the debt and seller snapshot rows. Rows skipped because an
+        values of the debt and seller snapshot rows. Every debt row carries its
+        voucher ``seller_code``, and open credit notes are debt rows of kind
+        ``credit_note``: reads scope customers, documents and credits by that
+        seller code. Rows skipped because an
         amount could not be read are counted in ``stats["unparsable_amounts"]``.
         """
         self.ensure_one()
@@ -708,15 +711,32 @@ class CollectionConnectorBejerman(models.Model):
         return rows
 
     @api.private
-    def _bejerman_list_customers(self, external_seller_id):
+    def _bejerman_seller_customers(self, external_seller_id):
+        """Customers with an open document (credit notes included) of this seller.
+
+        The voucher seller of each document decides, never the customer
+        master's seller: a seller sees whom they invoiced, and no one else.
+        """
         self.ensure_one()
-        self._bejerman_require_snapshot()
-        customers = self.env["collection.connector.bejerman.customer"].search(
+        codes = self.env["collection.connector.bejerman.debt"]._read_group(
             [
                 ("connector_id", "=", self.id),
                 ("seller_code", "=", mapping.trim_code(external_seller_id)),
+            ],
+            ["customer_code"],
+        )
+        return self.env["collection.connector.bejerman.customer"].search(
+            [
+                ("connector_id", "=", self.id),
+                ("customer_code", "in", [code for (code,) in codes]),
             ]
         )
+
+    @api.private
+    def _bejerman_list_customers(self, external_seller_id):
+        self.ensure_one()
+        self._bejerman_require_snapshot()
+        customers = self._bejerman_seller_customers(external_seller_id)
         return [_customer_payload(customer) for customer in customers]
 
     @api.private
@@ -741,13 +761,7 @@ class CollectionConnectorBejerman(models.Model):
     def _bejerman_get_customer_debt(self, external_seller_id, customer_identification):
         self.ensure_one()
         self._bejerman_require_fresh_snapshot()
-        customers = self.env["collection.connector.bejerman.customer"].search(
-            [
-                ("connector_id", "=", self.id),
-                ("seller_code", "=", mapping.trim_code(external_seller_id)),
-            ]
-        )
-        customers = customers.filtered(
+        customers = self._bejerman_seller_customers(external_seller_id).filtered(
             lambda customer: mapping.matches_customer_query(
                 customer.identification,
                 customer.customer_code,
@@ -756,18 +770,26 @@ class CollectionConnectorBejerman(models.Model):
         )
         if len(customers) != 1:
             return {"customer": None, "invoices": []}
-        debts = self.env["collection.connector.bejerman.debt"].search(
+        # Only this seller's documents: another seller's debt is theirs.
+        documents = self.env["collection.connector.bejerman.debt"].search(
             [
                 ("connector_id", "=", self.id),
                 ("customer_code", "=", customers.customer_code),
-                ("document_kind", "!=", "credit_note"),
+                ("seller_code", "=", mapping.trim_code(external_seller_id)),
             ],
             order="due_date, number, external_invoice_id",
+        )
+        credit_notes = documents.filtered(
+            lambda debt: debt.document_kind == "credit_note"
         )
         today = self._bejerman_today()
         return {
             "customer": _customer_payload(customers),
-            "invoices": [self._bejerman_invoice_payload(debt, today) for debt in debts],
-            "credit_total": customers.credit_total,
+            "invoices": [
+                self._bejerman_invoice_payload(debt, today)
+                for debt in documents - credit_notes
+            ],
+            # Open credit as a positive amount (decision D4), this seller's only.
+            "credit_total": round(-sum(credit_notes.mapped("balance")), 2),
             "as_of": fields.Datetime.to_string(self.bejerman_snapshot_refreshed_at),
         }

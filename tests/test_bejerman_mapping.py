@@ -66,7 +66,7 @@ class TestBejermanMapping(TransactionCase):
         self.assertEqual([row["customer_code"] for row in rows], ["123"])
 
     def test_find_customer_row_matches_code_and_unique_number(self):
-        """CUIT still matches; a code or its unique numeric tail does too."""
+        """CUIT, code or unique numeric tail match, whatever the master seller."""
         mapping = self._mapping()
         norte = {
             "Cliente_Codigo": "NS0160",
@@ -85,14 +85,17 @@ class TestBejermanMapping(TransactionCase):
         inactive = dict(norte, Cliente_Codigo="NS0007", Cliente_Habilitado=False)
         rows = [norte, ambiguous, other, inactive]
         for query in ("30765432109", "30-76543210-9", "NS0160", "ns0160"):
-            found = mapping.find_customer_row(rows, "E", query)
-            self.assertIs(found, norte, query)
-        self.assertIsNone(mapping.find_customer_row(rows, "E", "0160"))
-        self.assertIsNone(mapping.find_customer_row(rows, "E", "ZZ0160"))
-        unique = [norte, other, inactive]
-        self.assertIs(mapping.find_customer_row(unique, "E", "0160"), norte)
-        self.assertIs(mapping.find_customer_row(unique, "E", "160"), norte)
-        self.assertIsNone(mapping.find_customer_row(rows, "E", "0007"))
+            found = mapping.find_customer_rows(rows, query)
+            self.assertEqual(found, [norte], query)
+        # Every customer the tail may mean, whatever its master seller.
+        self.assertEqual(
+            mapping.find_customer_rows(rows, "0160"), [norte, ambiguous, other]
+        )
+        self.assertEqual(mapping.find_customer_rows(rows, "ZZ0160"), [other])
+        unique = [norte, inactive]
+        self.assertEqual(mapping.find_customer_rows(unique, "0160"), [norte])
+        self.assertEqual(mapping.find_customer_rows(unique, "160"), [norte])
+        self.assertEqual(mapping.find_customer_rows(rows, "0007"), [])
 
     def test_queries_decode_json_in_json(self):
         """Query views answer a JSON string holding JSON; decode it once."""
