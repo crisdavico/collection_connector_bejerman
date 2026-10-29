@@ -74,31 +74,27 @@ def _text(value: Any) -> str:
     return str(value).strip()
 
 
-def find_customer_row(
+def find_customer_rows(
     payload: Any,
-    external_seller_id: Any,
     identification: Any,
-) -> Mapping[str, Any] | None:
-    """Raw row of the unique active seller-scoped customer for this query.
+) -> list[Mapping[str, Any]]:
+    """Raw rows of every active customer this query may mean, of any seller.
 
+    The customer master's seller never scopes them: the caller narrows them
+    to its seller's customers and keeps only its seller's documents.
     ``identification`` may be the CUIT, the customer code, or the numeric tail
-    of that code (``0160`` selects ``NS0160``). Zero or several matches return
-    None.
+    of that code (``0160`` selects ``NS0160``).
     """
-    wanted_seller = trim_code(external_seller_id)
     matches = []
     for row in as_rows(payload):
         mapped = _map_customer_row(row)
         if mapped is None:
             continue
-        seller_code = trim_code(value_by_suffix(row, "VendedorCodigo", "seller_id"))
-        if seller_code != wanted_seller:
-            continue
         if matches_customer_query(
             mapped["identification"], mapped["customer_code"], identification
         ):
             matches.append(row)
-    return matches[0] if len(matches) == 1 else None
+    return matches
 
 
 def customer_from_row(row: Mapping[str, Any]) -> dict[str, Any] | None:

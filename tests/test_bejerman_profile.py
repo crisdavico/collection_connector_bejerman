@@ -133,7 +133,8 @@ class TestBejermanProfile(BejermanTestMixin, TransactionCase):
         self._refresh_with_source(connector)
         with _patch_today(connector):
             raw = connector._bejerman_get_customer_debt("E", "20123456789")
-        self.assertEqual(raw["credit_total"], 25.0)
+        # Only E's credit-note rows net the debt, never the customer's total.
+        self.assertEqual(raw["credit_total"], 0.0)
         self.assertEqual(len(raw["invoices"]), 1)
         self.assertNotIn("amount_untaxed", raw["invoices"][0])
         formatted = connector._format_customer_debt(raw)
