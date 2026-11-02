@@ -73,12 +73,10 @@ by customer name or code, seller code and number, filters invoices, quotations, 
 notes and overdue rows, and groups by customer code, seller code and kind. The customer
 name is read from the customer snapshot of the same refresh, not stored.
 
-Sheets entered in the ERP: receipts are typed into Bejerman by hand and a collections
-manager marks the closed sheet **Entered in the ERP** (`collection`). Its applied
-amounts keep being subtracted from the Bejerman balances until a refresh that
-**started** after the mark succeeded (the snapshot then shows the entry); a refresh that
-started earlier, even if it finished later, releases nothing. A profile that reads debt
-live answers at question time, so marked sheets are no longer subtracted.
+Sheets entered in the ERP: receipts are typed into Bejerman by hand. The debt a seller
+sees for a document applied on a sheet is its real open amount (`collection`): it does
+not depend on the **Entered in the ERP** mark or on when the snapshot was refreshed, so
+the refresh that recreates the debt rows every 4 hours never brings applied debt back.
 
 Customer debt reads the snapshot: `state` is `overdue` when the due date is before today
 in the company timezone, else `open`, computed at read time. Credit notes (decision D4):
