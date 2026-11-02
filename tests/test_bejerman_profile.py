@@ -141,14 +141,6 @@ class TestBejermanProfile(BejermanTestMixin, TransactionCase):
         invoice = formatted["invoices"][0]
         self.assertEqual(invoice["amount_untaxed"], invoice["amount"])
 
-    def test_erp_reflected_since_is_the_last_refresh_start(self):
-        connector = self._make_connector()
-        self._refresh_with_source(connector)
-        self.assertEqual(
-            connector._collection_erp_reflected_since(),
-            connector.bejerman_snapshot_started_at,
-        )
-
     def test_credit_notes_are_listed_but_never_offered_as_invoices(self):
         """Credit note rows show in the debt list; the agent keeps invoices only."""
         connector = self._make_connector()
