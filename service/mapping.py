@@ -80,8 +80,9 @@ def find_customer_rows(
 ) -> list[Mapping[str, Any]]:
     """Raw rows of every active customer this query may mean, of any seller.
 
-    The customer master's seller never scopes them: the caller narrows them
-    to its seller's customers and keeps only its seller's documents.
+    No seller scopes them here: the caller narrows them to its seller's
+    customers (by open document or customer master) and keeps only its
+    seller's documents.
     ``identification`` may be the CUIT, the customer code, or the numeric tail
     of that code (``0160`` selects ``NS0160``).
     """
@@ -100,6 +101,11 @@ def find_customer_rows(
 def customer_from_row(row: Mapping[str, Any]) -> dict[str, Any] | None:
     """Sqlite-raw customer for a raw TABLAS row, or None when disabled."""
     return _map_customer_row(row)
+
+
+def customer_seller_code(row: Mapping[str, Any]) -> str:
+    """Trimmed seller code the customer master assigns a raw TABLAS row to."""
+    return trim_code(value_by_suffix(row, "VendedorCodigo", "seller_id"))
 
 
 def erp_customer_code(row: Mapping[str, Any]) -> str:
@@ -121,9 +127,7 @@ def map_customer_rows(payload: Any) -> list[dict[str, Any]]:
                 "customer_code": mapped["customer_code"],
                 "name": mapped["name"],
                 "identification": mapped["identification"],
-                "seller_code": trim_code(
-                    value_by_suffix(row, "VendedorCodigo", "seller_id")
-                ),
+                "seller_code": customer_seller_code(row),
             }
         )
     return rows

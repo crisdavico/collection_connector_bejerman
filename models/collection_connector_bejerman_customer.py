@@ -29,8 +29,9 @@ class CollectionConnectorBejermanCustomer(models.Model):
     customer_code = fields.Char(required=True)
     name = fields.Char()
     identification = fields.Char()
-    # The customer master's seller. Reads never scope by it: a seller sees the
-    # customers their open documents name (``bejerman.debt.seller_code``).
+    # The customer master's seller. A seller sees the customers their open
+    # documents name (``bejerman.debt.seller_code``) plus the ones this names,
+    # debt or not; debt is still only their own documents.
     seller_code = fields.Char()
     # Open credit notes (negative balances) of this customer over every seller,
     # as a positive amount (decision D4). Reads net only the seller's own

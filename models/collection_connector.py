@@ -411,8 +411,9 @@ class CollectionConnectorBejerman(models.Model):
         rows, optionally with ``credit_total``; debts and sellers are the field
         values of the debt and seller snapshot rows. Every debt row carries its
         voucher ``seller_code``, and open credit notes are debt rows of kind
-        ``credit_note``: reads scope customers, documents and credits by that
-        seller code. Rows skipped because an
+        ``credit_note``: reads scope documents and credits by that seller code,
+        and customers by it or by the customer master's ``seller_code``. Rows
+        skipped because an
         amount could not be read are counted in ``stats["unparsable_amounts"]``.
         """
         self.ensure_one()
@@ -698,24 +699,28 @@ class CollectionConnectorBejerman(models.Model):
 
     @api.private
     def _bejerman_seller_customers(self, external_seller_id):
-        """Customers with an open document (credit notes included) of this seller.
+        """This seller's customers: by open document or by customer master.
 
-        The voucher seller of each document decides, never the customer
-        master's seller: a seller sees whom they invoiced, and no one else.
+        A customer with an open document (credit notes included) whose voucher
+        seller is this seller, or one the customer master assigns to them even
+        without debt, so they can load an advance. Debt reads still keep only
+        this seller's documents.
         """
         self.ensure_one()
+        seller_code = mapping.trim_code(external_seller_id)
         codes = self.env["collection.connector.bejerman.debt"]._read_group(
             [
                 ("connector_id", "=", self.id),
-                ("seller_code", "=", mapping.trim_code(external_seller_id)),
+                ("seller_code", "=", seller_code),
             ],
             ["customer_code"],
         )
+        scope = [("customer_code", "in", [code for (code,) in codes])]
+        if seller_code:
+            # Never an empty code: it would match every customer without one.
+            scope = ["|", *scope, ("seller_code", "=", seller_code)]
         return self.env["collection.connector.bejerman.customer"].search(
-            [
-                ("connector_id", "=", self.id),
-                ("customer_code", "in", [code for (code,) in codes]),
-            ]
+            [("connector_id", "=", self.id), *scope]
         )
 
     @api.private
