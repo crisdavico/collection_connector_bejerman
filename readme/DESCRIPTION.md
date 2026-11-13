@@ -20,11 +20,13 @@ session (login, reads, retries and close) must finish within **Bejerman Deadline
 read in chunks against it, so a slowly trickling download is aborted. The HTTP client is
 closed on every path, a failed login included. Faults raise a generic `UserError` with
 no SOAP, Token, URL, user, or clave. Customer listing and customer debt are
-seller-scoped and stay in this addon; `collection` does not call Bejerman. The scope is
-the voucher seller of each open document, never the customer master's seller: a seller
-sees the customers with at least one open invoice, quotation or credit note of theirs,
-and of those customers only their own documents, with only their own credit notes
-netting the total. A customer without an open document of that seller reads as unknown.
+seller-scoped and stay in this addon; `collection` does not call Bejerman. A seller sees
+the customers with at least one open invoice, quotation or credit note of theirs (the
+voucher seller of each document), plus the customers the customer master assigns to
+them, even without debt, so they can load an advance. Of any customer they see only
+their own documents, with only their own credit notes netting the total: a customer
+listed only through the master owes them nothing. Any other customer reads as unknown,
+and so does a query that matches more than one of the seller's customers.
 
 Profiles: several customers' connectors share one database, and each customer's ERP has
 its own query views. **Bejerman Profile** picks, per connector, the addon that reads the
