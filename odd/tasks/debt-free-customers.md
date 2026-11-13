@@ -26,7 +26,7 @@ Delivery: ask-on-risk. Tests: `invoke test -m collection_connector_bejerman_kras
 |----|-------|-------|--------|--------|
 | T1 | S2-S4 | inline | done (RED 6 tests, GREEN 152/154 + 40/40; 2 known env cron failures) | bejerman 90a308d, kras 33d377c + 25516fd |
 | T2 | S5 (Odoo docs) | inline | done | bejerman 90a308d, kras 33d377c |
-| T3 | S5 (agent decision log) | inline | open | |
+| T3 | S5 (agent decision log) | inline | skipped (user decision L8) | |
 
 ## Log
 
@@ -50,3 +50,6 @@ Delivery: ask-on-risk. Tests: `invoke test -m collection_connector_bejerman_kras
   that user sees those customers (names and CUITs, no debt).
 - **L7** (2026-11-13): native review granted and approved, acknowledged in both repos (lenses risk +
   reliability); only informational warnings.
+- **L8** (2026-11-13, user), asked whether to restore the agent repo's deleted `docs/functional-workflow.md`
+  and add the decision row: "no". T3 skipped; the agent repo is untouched. PRs: collection_connector_bejerman#21,
+  collection_connector_bejerman_kras#7.
