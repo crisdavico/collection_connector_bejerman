@@ -24,7 +24,7 @@ Delivery: ask-on-risk. Tests: `invoke test -m collection_connector_bejerman_kras
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S2-S4 | inline | done (RED 6 tests, GREEN 151/153 + 40/40; 2 known env cron failures) | bejerman 90a308d, kras 33d377c |
+| T1 | S2-S4 | inline | done (RED 6 tests, GREEN 152/154 + 40/40; 2 known env cron failures) | bejerman 90a308d, kras 33d377c + 25516fd |
 | T2 | S5 (Odoo docs) | inline | done | bejerman 90a308d, kras 33d377c |
 | T3 | S5 (agent decision log) | inline | open | |
 
@@ -44,3 +44,9 @@ Delivery: ask-on-risk. Tests: `invoke test -m collection_connector_bejerman_kras
   failures are `TestBejermanRefreshEntryPoints` cron tests that fail on the base too (devel DB has an extra
   active "Bejerman" connector). S4: `0160` shared by E's document customer and E's master customer is now
   ambiguous (was resolved to the document customer); the full code still resolves.
+- **L6** (2026-11-13): independent verifier PASS on S1-S5 (Odoo docs), no blockers. Added kras 25516fd: a
+  blank seller code lists nobody (mutation-checked: fails without the guard). Advisory A1: `trim_code("000")`
+  is `"0"`, so if the ERP marks unassigned customers with seller `0` and a seller `0` is bound to a user,
+  that user sees those customers (names and CUITs, no debt).
+- **L7** (2026-11-13): native review granted and approved, acknowledged in both repos (lenses risk +
+  reliability); only informational warnings.
